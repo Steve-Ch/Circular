@@ -1,0 +1,22 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+**/__pycache__/
+**/*.pyc
+
+# Django migrations
+**/migrations/*.py
+!**/migrations/__init__.py
+**/migrations/*.pyc
+**/migrations/__pycache__/
+
+# SQLite DB
+*.sqlite3
+db.sqlite3
+
+# Media files
+/media/
+/venv/
+# Environment variables
+.env
+.code-workspace
