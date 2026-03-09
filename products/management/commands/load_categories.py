@@ -6,9 +6,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         categories = [
-            'Home & Office', 'Phones & Tablets', 'Fasion', 
-            'Health & Beauty', 'Electronics', 'Computing', 'Grocery',
-            'Garden & outdoors', 'Automobile', 'Sporting Goods', 'Gaming', 'Baby Products'
+            "Appliances", "home & Kitchen", "Home", "Men's Fasion",
+            "Women's Fasion", "Kid's Fasion", "Watches", "Luggage & Travel Gear", "Makeup", "Fregrances", "Hair Care", 
+            "Personal Care", "Oral Care", "Health Care", "Beer, Wine& Spirits", "Food Cupboard", "Household Cleaning", 
+            "Training Equipment", "Accessories", "Sports", "Dipering", "Baby & Toddler Toys", "Home", 
         ]
 
  

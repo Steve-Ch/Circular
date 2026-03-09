@@ -8,6 +8,7 @@ import random
 import string
 import threading
 from rest_framework.exceptions import ValidationError
+import requests
 
 
 
@@ -105,6 +106,7 @@ def send_reset_password_otp(email, otp):
     from_email = settings.EMAIL_HOST_USER
     recipient_list = [email]
     send_email_in_thread(subject, message, from_email, recipient_list)
+
 
 
 

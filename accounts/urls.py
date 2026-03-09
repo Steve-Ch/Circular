@@ -22,5 +22,5 @@ urlpatterns = [
     path('resend-activation-otp/', UserResendActivationView.as_view()),
     path('password-reset/', UserPasswordResetView.as_view()),
     path('confirm-password-reset/', UserConfirmPasswordResetView.as_view()),
-    path('update-user/', UpdateUserView.as_view()),
+    path('my-profile/', UpdateUserView.as_view()),
 ]

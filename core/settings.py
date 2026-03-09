@@ -63,7 +63,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'core.middleware.error_logging.GlobalExceptionMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -192,7 +191,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_RENDERER_CLASSES':[('rest_framework.renderers.JSONRenderer'),],
+    # 'DEFAULT_RENDERER_CLASSES':[('rest_framework.renderers.JSONRenderer'),],
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
@@ -202,16 +202,16 @@ DRF_STANDARDIZED_ERRORS = {"ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": True}
 
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'U4C API',
+    'TITLE': 'Circular API',
     'DESCRIPTION': 'api documentation for united-4-change',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
-    "POSTPROCESSING_HOOKS": [
-        "drf_standardized_errors.openapi.postprocessing_hook"
-    ],
-    "ENUM_NAME_OVERRIDES": {
-        "ValidationErrorEnum": "drf_standardized_errors.openapi.utils.get_validation_error_codes",
-    },
+    # "POSTPROCESSING_HOOKS": [
+    #     "drf_standardized_errors.openapi.postprocessing_hook"
+    # ],
+    # "ENUM_NAME_OVERRIDES": {
+    #     "ValidationErrorEnum": "drf_standardized_errors.openapi.utils.get_validation_error_codes",
+    # },
 }
 
 
@@ -219,36 +219,36 @@ SPECTACULAR_SETTINGS = {
 
 JAZZMIN_SETTINGS = {
     # title of the window (Will default to current_admin_site.site_title if absent or None)
-    "site_title": "United-4-Change Admin",
+    "site_title": "Circular Admin",
 
     # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
-    "site_header": "United-4-Change Admin",
+    "site_header": "Circular Admin",
 
     # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
-    "site_brand": "United-4-Change",
+    "site_brand": "Circular",
 
     "show_ui_builder" : False,
 
     # Logo to use for your site, must be present in static files, used for brand on top left
-    "site_logo": "img/u4cmain.png",
+    "site_logo": "logo.jpeg",
 
     # Logo to use for your site, must be present in static files, used for login form logo (defaults to site_logo)
-    "login_logo": "img/u4clogin.png",
+    "login_logo": "logo.jpeg",
 
     # Logo to use for login form in dark themes (defaults to login_logo)
     # "login_logo_dark": None,
 
     # CSS classes that are applied to the logo above
-    #"site_logo_classes": "img-circle",
+    "site_logo_classes": "img-circle",
 
     # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
     # "site_icon": None,
 
     # Welcome text on the login screen
-    "welcome_sign": "Welcome to the United-4-Change Admin Panel",
+    "welcome_sign": "Welcome to Circular Admin Panel",
 
     # Copyright on the footer
-    "copyright": "United-4-Change",
+    "copyright": "Circular",
 
     # List of model admins to search from the search bar, search bar omitted if excluded
     # If you want to use a single search field you dont need to use a list, you can use a simple string 
@@ -268,7 +268,7 @@ JAZZMIN_SETTINGS = {
         # {"model": "auth.User"},
 
         # App with dropdown menu to all its models pages (Permissions checked against models)
-        {"app": "projects"},
+        {"app": "products"},
     ],
 
 }
@@ -300,3 +300,12 @@ SIMPLE_JWT = {
     #"TOKEN_OBTAIN_SERIALIZER":'accounts.serializers.CustomTokenObtainSerializer'
 }
 
+
+
+
+# Paystack Configuration
+PAYSTACK_SECRET_KEY = "sk_test_5d947c784a8128621c97b097c1aac95956044814"
+PAYSTACK_PUBLIC_KEY = "pk_test_7cee1859e12a60f0b5b6e0d5115045f7dc5fb353"
+PAYSTACK_BASE_URL = "https://api.paystack.co"
+CALLBACK_URL = "https://www.google.com" 
+SIGNATURE_KEY = "6n6vXm8PjL2kR9a"

@@ -35,5 +35,5 @@ urlpatterns = [
     path('account/', include('accounts.urls')),
     path('', include('products.urls')),
 ]
-# if settings.DEBUG:
-#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

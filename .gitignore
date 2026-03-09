@@ -16,6 +16,7 @@ db.sqlite3
 
 # Media files
 /media/
+/staticfiles/
 /venv/
 # Environment variables
 .env

@@ -1,9 +1,13 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from decimal import Decimal
 from .models import (
     Product, Cart,
     CartItem,Order,
     OrderItem,
     )
+from django.contrib.auth import get_user_model
+
 
 class ProductSerializer(serializers.ModelSerializer):
 
@@ -16,7 +20,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'categories_display', 'price', 'quantity',]
 
-    # @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_categories_display(self, obj):
         return [cat.name for cat in obj.categories.all()]
 
@@ -31,11 +35,12 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['id', 'product', 'price', 'quantity', 'total_price']
-        # 'quantity' is excluded from read_only so it can be updated
         read_only_fields = ['id', 'product', 'price', 'total_price']
+        
 
+    @extend_schema_field(Decimal)
     def get_total_price(self, obj):
-        return obj.quantity * obj.price
+        return obj.quantity * obj.product.price
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -58,3 +63,11 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'full_name', 'items', 'price_total', 'email', 'status', 'reference', 'address' ]
+
+
+class CheckoutResponseSerializer(serializers.Serializer):
+    reference = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
+    status = serializers.CharField()
+    checkout_url = serializers.URLField()
+

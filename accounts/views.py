@@ -13,7 +13,7 @@ from .serializers import (
     ResendAccountActivationSerializer,
     UserPasswordResetSerializer,
     UserConfirmPasswordResetSerializer,
-    UpdateProfileSerializer,
+    UserUpdateSerializer,
     )
 from.utils import validate_otp, generate_otp, send_reset_password_otp,send_mail
 
@@ -25,16 +25,20 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterationView(generics.GenericAPIView):
+    serializer_class = RegisterSerializer
+
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status= status.HTTP_201_CREATED)
 
 
 class AccountActivationView(generics.GenericAPIView):
+    serializer_class = AccountActivationSerializer
+
     def post(self, request):
-        serializer = AccountActivationSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'message': 'Account Activated Successfully'}, status= status.HTTP_200_OK)
@@ -46,7 +50,7 @@ class UserResendActivationView(generics.GenericAPIView):
     def post(self, request):
         serializer = ResendAccountActivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response("New Activation OTP has been sent to your email")
+        return Response({"message":"New Activation OTP has been sent to your email"})
 
 
 class UserPasswordResetView(generics.GenericAPIView):
@@ -67,7 +71,7 @@ class UserPasswordResetView(generics.GenericAPIView):
         user.otp_expiry = timezone.now()
         user.save()
         send_reset_password_otp(email=serializer.validated_data.get("email"), otp=otp)
-        return Response(data="OTP has been Sent to your email. Expires in 5 minutes")
+        return Response({"message":"OTP has been Sent to your email. Expires in 5 minutes"})
 
 
 
@@ -90,20 +94,15 @@ class UserConfirmPasswordResetView(generics.GenericAPIView):
                 from_email=settings.EMAIL_HOST_USER,
                 recipient_list=[user.email],
             )
-            return Response("Password reset successful.", status=status.HTTP_200_OK)
+            return Response({"message":"Password reset successful."}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UpdateUserView(generics.GenericAPIView):
+class UpdateUserView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes=[parsers.MultiPartParser]
+    parser_classes = [parsers.MultiPartParser, parsers.JSONParser]
+    serializer_class = UserUpdateSerializer
 
-    def patch(self, request):
-        serializer = UpdateProfileSerializer(
-            request.user, data=request.data, partial=True
-        )
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Profile updated successfully."})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_object(self):
+        return self.request.user

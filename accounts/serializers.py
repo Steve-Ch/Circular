@@ -12,8 +12,10 @@ from django.contrib.auth.password_validation import validate_password
 from .utils import validate_otp, generate_otp, send_account_activation_otp
 
 
-class UserRegistionUniqueValidator(UniqueValidator):
+class UserEmailUniqueValidator(UniqueValidator):
     message = "User with the provided email already exists"
+class UserPhoneUniqueValidator(UniqueValidator):
+    message = "User with the provided Phonenumber already exists"
 
 
 
@@ -74,7 +76,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
         validators=[
-            UserRegistionUniqueValidator(queryset=get_user_model().objects.all())
+            UserEmailUniqueValidator(queryset=get_user_model().objects.all())
         ],
     )
 
@@ -192,49 +194,26 @@ class UserConfirmPasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError(err.messages)
 
         return attrs
-    
-# class UpdateProfileSerializer(serializers.ModelSerializer):
-#     # phone_number = PhoneNumberField(required=False)
-#     # avatar = serializers.ImageField(required=False)
-
-#     class Meta:
-#         model = get_user_model()
-#         fields = [
-#             # 'first_name',
-#             # 'last_name',
-#             # 'email',
-#             'phone_number',
-#             'avatar',
-#         ]
-#         extra_kwargs = {
-#             # 'email': {'required': False},
-#             # 'first_name': {'required': False},
-#             # 'last_name': {'required': False},
-#             'avatar': {'required': False},
-#             'phone_number': {'required': False},
-#             }
-    
+  
 
 
-class UpdateProfileSerializer(serializers.ModelSerializer):
-    avatar = serializers.ImageField(required=False)
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        validators=[
+            UserEmailUniqueValidator(queryset=get_user_model().objects.all())
+        ],
+    )
+
+    phone_number = PhoneNumberField(
+        validators=[
+            UserPhoneUniqueValidator(queryset=get_user_model().objects.all())
+        ],)
 
     class Meta:
         model = get_user_model()
-        fields = [
-            'phone_number',
-            'avatar',
-        ]
-        extra_kwargs = {
-            'avatar': {'required': False},
-            'phone_number': {'required': False},
-        }
+        fields = ['first_name', 'last_name', 'phone_number', 'email', 'address', 'avatar']
 
-    # def update(self, instance, validated_data):
-    #     avatar = validated_data.pop('avatar', None)
 
-    #     if avatar:
-    #         avatar_url = resize_and_upload(avatar)
-    #         instance.avatar = avatar_url
-
-    #     return super().update(instance, validated_data)
+    

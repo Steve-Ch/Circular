@@ -62,6 +62,7 @@ class User(AbstractUser):
     otp = models.CharField(max_length=6,null=True,blank=True)
     otp_expiry = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
+    address = models.CharField(max_length=30, blank=True, null=True)
 
 
     USERNAME_FIELD = "email"
@@ -70,16 +71,17 @@ class User(AbstractUser):
     objects = CustomUserManager()
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} Email: {self.email}"
+        return f"{self.full_name}"
     
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
     
 
-class Address(TimeStamps, models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
-    address = models.CharField(max_length=50)
+# class Address(TimeStamps, models.Model):
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+#     address = models.CharField(max_length=50)
 
-    class Meta:
-        verbose_name_plural = "Addresses"
+#     class Meta:
+#         verbose_name_plural = "Addresses"
