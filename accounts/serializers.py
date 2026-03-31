@@ -29,7 +29,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         password = attrs.get("password")
         User = get_user_model()
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             raise serializers.ValidationError({"email": "Invalid email"})
 
@@ -80,7 +80,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         ],
     )
 
-    phone_number = PhoneNumberField()
+    phone_number = PhoneNumberField(
+        validators=[
+            UserPhoneUniqueValidator(queryset=get_user_model().objects.all())
+        ],)
 
     password = serializers.CharField(
         write_only=True,

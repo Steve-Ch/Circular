@@ -31,7 +31,7 @@ class RegisterationView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status= status.HTTP_201_CREATED)
+        return Response({'message': "Registration successful. Please check your email for the OTP to verify your account."}, status= status.HTTP_201_CREATED)
 
 
 class AccountActivationView(generics.GenericAPIView):
