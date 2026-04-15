@@ -11,10 +11,14 @@ from drf_spectacular.utils import extend_schema
 from .utils import initiate_payment, paystack_verify, finalize_order
 from django.conf import settings
 import threading
+from django.db.models import Avg, Value
+from django.db.models.functions import Coalesce
+from django.db.models import Prefetch
 from .models import (
     Product, Cart,
-    CartItem,Order,
-    OrderItem, Transaction
+    CartItem,Order, Review,
+    OrderItem, Transaction,
+    ProductImage, Category
     )
 from .serializers import (
     ProductSerializer, 
@@ -22,19 +26,58 @@ from .serializers import (
     OrderSerializer,
     CartItemSerializer,
     CheckoutResponseSerializer,
+    ProductListSerializer,
+    CategorySerializer,
+    ReviewSerializer
     )
 
 # Create your views here.
 
 
-
 class ProductListAPIView(generics.ListAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+    serializer_class = ProductListSerializer
+    queryset = Product.objects.filter(quantity__gte=1)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['categories__name',]
     search_fields = ['name']
     pagination_class = StandardResultsSetPagination
+    # ... your filters and pagination ...
+
+    # def get_queryset(self):
+    #     # 1. Prefetch only the first image to avoid loading all images
+    #     image_prefetch = Prefetch(
+    #         'images', 
+    #         queryset=ProductImage.objects.all(), # Replace ProductImage with your actual model name
+    #         to_attr='first_image_list'
+    #     )
+
+    #     return Product.objects.annotate(
+    #         # Coalesce replaces None with 0.0 if no reviews exist
+    #         avg_rating=Coalesce(Avg('reviews__rating'), Value(0.0))
+    #     ).prefetch_related(
+    #         image_prefetch,
+    #         'categories' # Prefetch categories to avoid N+1 in get_categories_display
+    #     ).all()
+
+
+
+
+
+
+class CategoryListAPIView(generics.ListAPIView):
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+
+
+class ReviewListAPIView(generics.ListAPIView):
+    serializer_class = ReviewSerializer
+    pagination_class = StandardResultsSetPagination
+    
+    def get_queryset(self):
+        pk = self.kwargs['pk']
+        return Review.objects.filter(product_id = pk)
+
+
 
 
 
@@ -119,8 +162,8 @@ class CheckoutView(generics.GenericAPIView):
         # data = serializer.validated_data
         # address_id = data.get('address_id')
         # address = user.addresses.filter(id = address_id)
-        address = request.data.user.address
-        if not address.exist():
+        address = request.user.address
+        if not address:
             raise PermissionDenied("Address not Found, for this user") 
 
         user = request.user

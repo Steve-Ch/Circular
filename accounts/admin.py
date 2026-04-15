@@ -9,7 +9,7 @@ from .models import User
 class CustomUserAdmin(UserAdmin):
     model = User
     ordering = ('email',)
-    list_display = ('full_name', 'email', 'phone_number', 'is_active', 'is_staff')
+    list_display = ( 'email', 'full_name', 'phone_number', 'is_active', 'is_staff')
     search_fields = ('email',)
     # readonly_fields = (
     #     'first_name', 'last_name', 'phone_number', 

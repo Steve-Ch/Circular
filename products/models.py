@@ -10,6 +10,7 @@ from decimal import Decimal
 import shortuuid
 from django.db import IntegrityError, transaction
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Avg
 
 
 
@@ -47,10 +48,19 @@ class Product(models.Model):
     )
 
 
+    @property
+    def image(self):
+        return self.images.first().image.url
+
     # @extend_schema_field(Decimal)
     def categories_display(self):
         return [cat.name for cat in self.categories.all()]
     categories_display.short_description = "Categories"
+
+    # @property
+    # def average_rating(self):
+    #     return self.reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+
 
     def __str__(self):
         return f"{self.name}"
@@ -59,7 +69,10 @@ class Product(models.Model):
 
 def product_image_path(instance, filename):
     product =instance.product
-    return f'product images/{product.name}'
+    random_name = uuid.uuid4()
+    return f'product images/{product.name}/{random_name}.jpg'
+
+
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
@@ -81,6 +94,25 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.image.name}"
+
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Prevents multiple reviews from the same user for one product
+        unique_together = ('product', 'user') 
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name} ({self.rating}*)"
+
+
 
 
 class Cart(TimeStamps, models.Model):
@@ -112,7 +144,11 @@ class CartItem(models.Model):
         ]
     )
 
-    
+    # @extend_schema_field(Decimal)
+    @property
+    def image(self):
+        return self.product.images.first().image.url
+
     @property
     @extend_schema_field(Decimal)
     def price(self):

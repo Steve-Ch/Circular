@@ -8,13 +8,17 @@ from .views import (
     CartItemCreateAPIView,
     CartItemUpdateDestroyAPIView,
     CheckoutView,
-    paystack_webhook
+    paystack_webhook,
+    ReviewListAPIView,
+    CategoryListAPIView,
 )
 
 
 urlpatterns = [
     path('products/', ProductListAPIView.as_view()),
     path('products/<uuid:pk>/', ProductRetrieveAPIView.as_view()),
+    path('products/<uuid:pk>/reviews/', ReviewListAPIView.as_view()),
+    path('categories', CategoryListAPIView.as_view()),
     path('my-orders/', OrderListAPIView.as_view()),
     path('my-orders/<uuid:pk>/', OrderRetrieveAPIView.as_view()),
     path('my-cart', CartRetrieveAPIView.as_view()),
