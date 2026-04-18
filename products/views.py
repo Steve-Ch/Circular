@@ -79,6 +79,30 @@ class ReviewListAPIView(generics.ListAPIView):
 
 
 
+class ReviewDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        # This ensures the user only ever interacts with THEIR review for THIS product
+        product_id = self.kwargs.get('pk')
+        return Review.objects.filter(user=self.request.user, product_id=product_id).first()
+
+    def post(self, request, *args, **kwargs):
+        # Custom logic to handle "Create or Update" in one POST request
+        instance = self.get_object()
+        if instance:
+            # Update existing
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+        else:
+            # Create new
+            serializer = self.get_serializer(data=request.data)
+        
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=self.request.user, product_id=self.kwargs.get('pk'))
+        
+        return Response(serializer.data, status=status.HTTP_200_OK if instance else status.HTTP_201_CREATED)
+
 
 
 class ProductRetrieveAPIView(generics.RetrieveAPIView):
@@ -162,12 +186,23 @@ class CheckoutView(generics.GenericAPIView):
         # data = serializer.validated_data
         # address_id = data.get('address_id')
         # address = user.addresses.filter(id = address_id)
+
+        user = request.user
+        cart = Cart.objects.get(user=user)
+        cart_items = cart.items.select_related('product')
+
+        # PRE-CHECK: Don't even start payment if stock is already gone
+        for item in cart_items:
+            if item.product.quantity < item.quantity:
+                return Response({
+                    "error": f"Only {item.product.quantity} units of {item.product.name} left."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+
         address = request.user.address
         if not address:
             raise PermissionDenied("Address not Found, for this user") 
 
-        user = request.user
-        cart = Cart.objects.get(user=user)
         transaction_obj = Transaction.objects.create(
             user=user, 
             amount=cart.price_total, 

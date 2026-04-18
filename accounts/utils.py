@@ -35,11 +35,11 @@ def generate_otp(length=6):
 #         user.otp_expiry = None
 #         return user
 
-def validate_otp(otp, minutes=5):
+def validate_otp(otp, email, minutes=5):
     User = get_user_model()
 
     try:
-        user = User.objects.get(otp=otp)
+        user = User.objects.get(email=email, otp=otp)
     except User.DoesNotExist:
         raise ValidationError("Invalid OTP.")
 

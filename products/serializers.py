@@ -47,7 +47,7 @@ class ProductSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Product
-        fields = ['id', 'name', 'categories_display', 'price', 'average_rating', 'quantity', 'images']
+        fields = ['id', 'name', 'description', 'categories_display', 'price', 'average_rating', 'quantity', 'images']
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_categories_display(self, obj):

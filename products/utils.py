@@ -104,21 +104,19 @@ def paystack_verify(reference):
 
 from django.db import transaction as db_transaction
 from django.core.exceptions import ValidationError
+from django.db.models import F
+from products.models import Product, Order
 
 def finalize_order(ref, status):
     if status == 'success':
-        transaction = Transaction.objects.get(reference=ref)
-        
-        if transaction.status == Transaction.Status.PENDING:
-            transaction.status = Transaction.Status.SUCCESSFUL
-            user = transaction.user
+        # Use select_for_update() to wait for other transactions to finish
+        with db_transaction.atomic():
+            transaction = Transaction.objects.select_for_update().get(reference=ref)
             
-            # Use db_transaction.atomic to ensure all-or-nothing
-            with db_transaction.atomic():
-                cart = user.cart
-                cart_items = cart.items.all()
+            if transaction.status == Transaction.Status.PENDING:
+                user = transaction.user
+                cart_items = user.cart.items.select_related('product').all()
                 
-                # 1. Create the Order instance
                 order = Order.objects.create(
                     user=user,
                     reference=transaction.reference,
@@ -130,17 +128,20 @@ def finalize_order(ref, status):
 
                 order_items = []
                 for item in cart_items:
-                    product = item.product
+                    # LOCK the product row so nobody else can change its quantity right now
+                    product = Product.objects.select_for_update().get(id=item.product.id)
                     
-                    # --- NEW LOGIC: Deduct Inventory ---
                     if product.quantity < item.quantity:
-                        raise ValidationError(f"Insufficient stock for {product.name}")
-                    
-                    product.quantity -= item.quantity
-                    product.save()
-                    # -----------------------------------
+                        # This triggers the rollback of the transaction.atomic()
+                        raise ValidationError(f"Stock ran out for {product.name} during payment.")
 
-                    # Prepare OrderItem
+                    # Use F expression to avoid Python-level race conditions
+                    product.quantity = F('quantity') - item.quantity
+                    product.save()
+                    
+                    # Refresh from DB to get the current price for order_items
+                    product.refresh_from_db() 
+                    
                     order_items.append(
                         OrderItem(
                             order=order,
@@ -150,12 +151,10 @@ def finalize_order(ref, status):
                         )
                     )
 
-                # 2. Bulk create OrderItems
                 OrderItem.objects.bulk_create(order_items)
-
-                # 3. Now clear the cart
                 cart_items.delete()
                 
-                # Save the transaction status change
+                transaction.status = Transaction.Status.SUCCESSFUL
                 transaction.save()
+
 
