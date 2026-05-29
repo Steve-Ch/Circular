@@ -1,9 +1,15 @@
-from django.contrib import admin
+from django.contrib import admin,messages
+from django.urls import path, reverse
 from .models import (
     Product, Cart,Review,
     CartItem,Order,ProductImage,
     OrderItem, Transaction, Category
     )
+from django.shortcuts import render, redirect, get_object_or_404
+from accounts.utils import generate_otp, validate_otp,send_html_mail
+from django.utils import timezone
+from datetime import timedelta
+
 # Register your models here.
 
 # admin.site.register(Product)
@@ -97,9 +103,97 @@ class OrderItemInline(admin.StackedInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     list_display = ('user', 'user__email', 'reference', 'status')
     search_fields = ('user__email','reference')
-    readonly_fields = ('user', 'email', 'address', 'reference', 'status')
+    readonly_fields = ('full_name','user', 'email', 'address', 'reference',)
+
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        if object_id:
+            # Dynamically applies template for the edit page
+            self.change_form_template = 'admin/products/order_changeform.html'
+        else:
+            self.change_form_template = None
+            
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<uuid:pk>/send-otp/',
+                self.admin_site.admin_view(self.confirm_delivery),
+                name='confirm_delivery'
+            ),
+            
+        ]
+        return custom + urls
+
+    def confirm_delivery(self, request, pk):
+        # Import the correct ValidationError thrown by your utils file
+        from rest_framework.exceptions import ValidationError
+        
+        order = get_object_or_404(Order, pk=pk)
+        user = order.user
+
+        if request.method == 'POST':
+            submitted_code = request.POST.get('otp')
+
+            
+            try:
+                # Wrap the validation function inside the try block to catch its failure exceptions
+                if user.otp == submitted_code:
+
+                    if timezone.now() - user.otp_expiry > timedelta(minutes=15):
+                        raise ValidationError("OTP has expired.")
+
+                    # Invalidate OTP after successful use
+                    user.otp = None
+                    user.otp_expiry = None
+                    user.save(update_fields=["otp", "otp_expiry"])
+                    order.status = Order.Status.DELIVERED
+                    order.save()
+                    messages.success(request, "Order Status Updated to Delivered")
+                else:
+                    messages.error(request, "Invalid OTP code supplied.")
+                    
+            except ValidationError as ve:
+                # Catch the specific REST Framework ValidationError raised by your utils file
+                messages.error(request, f" {ve.detail[0] if isinstance(ve.detail, list) else ve.detail}")
+            except Exception as e:
+                # Catch general database or unexpected runtime errors
+                messages.error(request, f"Unexpected error: {e}")
+
+            return redirect(reverse('admin:products_order_change', args=[pk]))
+
+        # --- GET request logic for the "Send OTP" button ---
+        otp = generate_otp()
+        user.otp = otp
+        user.otp_expiry = timezone.now() + timezone.timedelta(minutes=15)
+        user.save()
+
+        subject = "Delivery Confimation Mail"
+        message = f"""Hello {user.full_name}, please use the 6-digit code to validate your delivery with the driver, Thanks"""
+        send_html_mail(user.email,subject,message, otp=otp)
+        messages.success(request, "✅ OTP sent successfully.")
+        return redirect(reverse('admin:products_order_change', args=[pk]))
+
+
+

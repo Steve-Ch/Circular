@@ -1,0 +1,50 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+
+  {% if flag %}
+    <div style="max-width:600px; margin:2rem auto;">
+    <h1 style="color:#dc3545;">❌ Halt Campaign: {{ project.title }}</h1>
+    <p>Please tell us why you intend to halt this campaign. This will be emailed to <strong>{{ project.organization.user.email }}</strong>. Keep in mind this action cannot be reversed</p>
+
+    <form method="post" action="{% url 'admin:halt_campaign_url' project.id %}">
+      {% csrf_token %}
+      <textarea name="reason"
+                rows="6"
+                style="width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px;"
+                placeholder="Enter your reason..."
+                required></textarea>
+      <br><br>
+      <button type="submit"
+              style="background:#dc3545; color:white; padding:8px 20px; border:none; border-radius:4px;">
+        Halt Campaign
+      </button>
+      <a href="{% url 'admin:projects_project_change' project.id %}"
+         style="margin-left:1rem; text-decoration:none;">Cancel</a>
+    </form>
+  </div>
+  {% else %}
+    <div style="max-width:600px; margin:2rem auto;">
+    <h1 style="color:#dc3545;">❌ Disapprove Campaign: {{ project.title }}</h1>
+    <p>Please tell us why you intend to disapprove this campaign. This will be sent to the NGO'S mail: <strong>{{ project.organization.user.email }}</strong>.</p>
+
+    <form method="post" action="{% url 'admin:projects_project_deny' project.id %}">
+      {% csrf_token %}
+      <textarea name="reason"
+                rows="6"
+                style="width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px;"
+                placeholder="Enter reason for disaproval..."
+                required></textarea>
+      <br><br>
+      <button type="submit"
+              style="background:#dc3545; color:white; padding:8px 20px; border:none; border-radius:4px;">
+        Confirm Disapproval
+      </button>
+      <a href="{% url 'admin:projects_project_change' project.id %}"
+         style="margin-left:1rem; text-decoration:none;">Cancel</a>
+    </form>
+  </div>
+  {% endif %}
+  
+{% endblock %}

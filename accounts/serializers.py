@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from .utils import validate_otp, generate_otp, send_account_activation_otp
-
+from .models import Estate
 
 class UserEmailUniqueValidator(UniqueValidator):
     message = "User with the provided email already exists"
@@ -65,8 +65,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 
-
-
+class EstateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Estate
+        fields = ['id','name', 'location', 'state', 'town']
 
 
 
@@ -83,19 +85,22 @@ class RegisterSerializer(serializers.ModelSerializer):
     phone_number = PhoneNumberField(
         validators=[
             UserPhoneUniqueValidator(queryset=get_user_model().objects.all())
-        ],)
+        ],
+    )
 
     password = serializers.CharField(
         write_only=True,
         required=True,
     )
-    first_name = serializers.CharField( 
-        required=True
-        )
-
-    last_name = serializers.CharField(
-        required=True
-        )
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    
+    
+    estate = serializers.PrimaryKeyRelatedField(
+        queryset=Estate.objects.all(),
+        required=True,
+        error_messages={'does_not_exist': 'The selected estate ID does not exist in our system.',}
+    )
 
     class Meta:
         model = get_user_model()
@@ -105,30 +110,36 @@ class RegisterSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone_number",
+            "estate",
         )
         extra_kwargs = {
             "email": {"required": True},
             "password": {"required": True},
             "first_name": {"required": True},
             "last_name": {"required": True},
-            "phone_number": {"reqired": True},
+            "phone_number": {"required": True}, 
         }
 
     def validate(self, attrs):
         try:
-            validate_password(password=attrs["password"], user = None)
+            validate_password(password=attrs["password"], user=None)
         except ValidationError as err:
             raise serializers.ValidationError(err.messages)
 
         return attrs
 
     def create(self, validated_data):
+        # 3. Pull the Estate instance out of validated_data
+        estate_instance = validated_data.get("estate")
+
+        # 4. Pass the estate instance directly into your create call
         user = get_user_model().objects.create(
             email=validated_data["email"],
-            first_name = validated_data['first_name'],
-            last_name = validated_data['last_name'],
-            phone_number = validated_data['phone_number']
-            )
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            phone_number=validated_data['phone_number'],
+            estate=estate_instance  # Connects the user to the estate
+        )
 
         user.set_password(validated_data["password"])
         otp = generate_otp()
@@ -138,6 +149,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         send_account_activation_otp(validated_data.get("email"), otp)
 
         return user
+
 
 class AccountActivationSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, min_length=6)
@@ -191,34 +203,69 @@ class UserPasswordResetSerializer(serializers.Serializer):
 class UserConfirmPasswordResetSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, min_length=6)
     new_password = serializers.CharField(min_length=5, max_length=5)
+    email = serializers.EmailField(required=True)
 
-    def validate(self, attrs):        
-        try:
-            validate_password(password=attrs.get("new_password"), user = None)
-        except ValidationError as err:
-            raise serializers.ValidationError(err.messages)
+    # def validate(self, attrs):        
+    #     try:
+    #         validate_password(password=attrs.get("new_password"), user = None)
+    #     except ValidationError as err:
+    #         raise serializers.ValidationError(err.messages)
 
-        return attrs
+    #     return attrs
   
-
 
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
+        required=False, # Allows updating other fields without re-sending email
         validators=[
             UserEmailUniqueValidator(queryset=get_user_model().objects.all())
         ],
     )
 
     phone_number = PhoneNumberField(
+        required=False, # Allows updating other fields without re-sending phone
         validators=[
             UserPhoneUniqueValidator(queryset=get_user_model().objects.all())
-        ],)
+        ],
+    )
+
+    # Incorporating the estate field setup (Set to required=False for updates)
+    estate = serializers.PrimaryKeyRelatedField(
+        queryset=Estate.objects.all(),
+        required=False,
+        allow_null=True,  # Allows a user to clear/remove their estate if needed
+        error_messages={
+            'does_not_exist': 'The selected estate ID does not exist in our system.',
+            'incorrect_type': 'Incorrect type. Expected an integer or ID representing the estate.'
+        }
+    )
 
     class Meta:
         model = get_user_model()
-        fields = ['first_name', 'last_name', 'phone_number', 'email', 'address', 'avatar']
+        fields = [
+            'first_name',
+            'last_name', 
+            'email', 
+            'phone_number', 
+            'estate',  # Included in fields list
+            'address', 
+            'avatar'
+        ]
+
+    def validate(self, attrs):
+        # Unique validation protection during updates
+        user = self.instance  # Gets the user currently logged in / being updated
+        
+        # Prevent unique validators from crashing on the user's own current data
+        if user:
+            if 'email' in attrs and attrs['email'] == user.email:
+                attrs.pop('email')  # Remove it from validation if it didn't change
+            if 'phone_number' in attrs and attrs['phone_number'] == user.phone_number:
+                attrs.pop('phone_number') # Remove it from validation if it didn't change
+
+        return attrs
 
 
     

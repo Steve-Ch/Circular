@@ -2,12 +2,9 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from decimal import Decimal
 from .models import (
-    Product, Cart,
-    CartItem,Order,
-    OrderItem,
-    ProductImage,
-    Review,
-    Category
+    Product, Cart,CartItem,Order,
+    OrderItem,ProductImage,Review,
+    Category,
     )
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
@@ -31,6 +28,9 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['name',]
+
+
+
 
 
 

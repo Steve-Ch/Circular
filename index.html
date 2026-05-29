@@ -1,0 +1,186 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'contract/contract.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+
+  <!-- notifications container (top-right) -->
+  <div id="adminNotifyContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="row">
+    <!-- widgets -->
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 rounded-4 bg-primary text-white h-100 shadow-lg widget-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div><h6 class="text-uppercase fw-semibold">Total Donors</h6><h2 class="fw-bold">{{ total_donors }}</h2></div>
+          <img src="https://img.icons8.com/ios-filled/100/ffffff/conference-call.png" alt="Users" class="img-fluid" style="width:60px;height:60px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 rounded-4 bg-success text-white h-100 shadow-lg widget-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div><h6 class="text-uppercase fw-semibold">Total Campaigns</h6><h2 class="fw-bold">{{ total_campaigns }}</h2></div>
+          <img src="https://img.icons8.com/ios-filled/100/ffffff/task.png" alt="Campaigns" class="img-fluid" style="width:60px;height:60px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 rounded-4 text-white h-100 bg-info shadow-lg widget-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div><h6 class="text-uppercase fw-semibold">Vault Balance</h6><h2 class="fw-bold">$ {{ vault_balance }}</h2></div>
+          <img src="https://img.icons8.com/?size=100&id=JdQzqQws4sSP&format=png&color=ffffff" alt="Vault" class="img-fluid" style="width:60px;height:60px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 rounded-4 bg-danger text-white h-100 shadow-lg widget-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div><h6 class="text-uppercase fw-semibold">Treasury Balance</h6><h2 class="fw-bold">$ {{ treasury_balance }}</h2></div>
+          <img src="https://img.icons8.com/ios-filled/100/ffffff/money-bag.png" alt="Treasury" class="img-fluid" style="width:60px;height:60px;">
+        </div>
+      </div>
+    </div>
+  </div>
+{% comment %} 
+  <!-- CONTRACT INFO -->
+  <div class="row mt-2">
+    <div class="col-12">
+      <div class="contract-toggle d-flex align-items-center justify-content-between p-3 rounded-3" role="button" tabindex="0" data-target="#contractCollapseNative" aria-expanded="false" aria-controls="contractCollapseNative">
+        <div class="d-flex align-items-center gap-3">
+          <div class="contract-bullet" aria-hidden="true"></div>
+          <div><div class="fw-semibold">Contract Information</div><small class="text-muted">Click to view contract functions and controls</small></div>
+        </div>
+        <div class="contract-arrow" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div id="contractCollapseNative" class="contract-collapse mt-2" aria-hidden="true">
+        <div class="card contract-card border-0 rounded-4 shadow-sm overflow-hidden">
+          <div class="card-body p-4">
+            <div class="row gx-4">
+              <div class="col-lg-8">
+                <h5 class="mb-3">Functions</h5>
+
+                <!-- 1 -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="set_platform_wallet">
+                  <div class="d-flex justify-content-between">
+                    <div><div class="fw-semibold">Set Platform Wallet</div><div class="text-muted small">Update the platform's treasury wallet address.</div></div>
+                    <button class="btn btn-sm btn-outline-primary change-fn-btn" data-target="#form-fn-platform-wallet">Change</button>
+                  </div>
+                  <div id="form-fn-platform-wallet" class="fn-form mt-3" aria-hidden="true" data-endpoint="{% url 'contract:set_platform_wallet' %}">
+                    <form class="row g-2">
+                      <div class="col-md-6"><label class="form-label small mb-1">Wallet address</label><input type="text" class="form-control form-control-sm" name="wallet_address" placeholder="0x..."></div>
+                      <div class="col-12 d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-primary submit-fn-btn">Save</button><button type="button" class="btn btn-sm btn-secondary cancel-fn-btn">Cancel</button></div>
+                    </form>
+                  </div>
+                </div>
+
+                <!-- 2 -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="set_allowed_token">
+                  <div class="d-flex justify-content-between">
+                    <div><div class="fw-semibold">Set Allowed Token</div><div class="text-muted small">Allow or disallow a token.</div></div>
+                    <button class="btn btn-sm btn-outline-primary change-fn-btn" data-target="#form-fn-allowed-token">Change</button>
+                  </div>
+                  <div id="form-fn-allowed-token" class="fn-form mt-3" aria-hidden="true" data-endpoint="{% url 'contract:set_allowed_token' %}">
+                    <form class="row g-2">
+                      <div class="col-md-6"><label class="form-label small mb-1">Token address</label><input type="text" class="form-control form-control-sm" name="token_address"></div>
+                      <div class="col-md-6"><label class="form-label small mb-1">Allowed</label><select class="form-select form-select-sm" name="allowed"><option value="true">True</option><option value="false">False</option></select></div>
+                      <div class="col-12 d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-primary submit-fn-btn">Save</button><button type="button" class="btn btn-sm btn-secondary cancel-fn-btn">Cancel</button></div>
+                    </form>
+                  </div>
+                </div>
+
+                <!-- 3 -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="transfer_ownership">
+                  <div class="d-flex justify-content-between">
+                    <div><div class="fw-semibold">Transfer Ownership</div><div class="text-muted small">Transfer contract owner to a new address.</div></div>
+                    <button class="btn btn-sm btn-outline-primary change-fn-btn" data-target="#form-fn-transfer-owner">Change</button>
+                  </div>
+                  <div id="form-fn-transfer-owner" class="fn-form mt-3" aria-hidden="true" data-endpoint="{% url 'contract:transfer_ownership' %}">
+                    <form class="row g-2">
+                      <div class="col-md-6"><label class="form-label small mb-1">New owner address</label><input type="text" class="form-control form-control-sm" name="new_owner" placeholder="0x..."></div>
+                      <div class="col-12 d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-primary submit-fn-btn">Save</button><button type="button" class="btn btn-sm btn-secondary cancel-fn-btn">Cancel</button></div>
+                    </form>
+                  </div>
+                </div>
+
+                <!-- 4 pause -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="pause">
+                  <div class="d-flex justify-content-between"><div><div class="fw-semibold">Pause Contract</div><div class="text-muted small">Pause contract operations.</div></div><button class="btn btn-sm btn-outline-danger confirm-fn-btn" data-action="pause" data-endpoint="{% url 'contract:pause' %}">Pause</button></div>
+                </div>
+
+                <!-- 5 unpause -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="unpause">
+                  <div class="d-flex justify-content-between"><div><div class="fw-semibold">Unpause Contract</div><div class="text-muted small">Unpause contract operations.</div></div><button class="btn btn-sm btn-outline-success confirm-fn-btn" data-action="unpause" data-endpoint="{% url 'contract:unpause' %}">Unpause</button></div>
+                </div>
+
+                <!-- 6 set fee -->
+                <div class="mb-3 function-block p-3 rounded-3" data-func-id="set_fee_bps">
+                  <div class="d-flex justify-content-between">
+                    <div><div class="fw-semibold">Set Fee (bps)</div><div class="text-muted small">Set platform fee in basis points (e.g., 100 = 1%)</div></div>
+                    <button class="btn btn-sm btn-outline-primary change-fn-btn" data-target="#form-fn-set-fee">Change</button>
+                  </div>
+                  <div id="form-fn-set-fee" class="fn-form mt-3" aria-hidden="true" data-endpoint="{% url 'contract:set_fee_bps' %}">
+                    <form class="row g-2">
+                      <div class="col-md-6"><label class="form-label small mb-1">Fee (bps)</label><input type="number" min="0" class="form-control form-control-sm" name="fee_bps"></div>
+                      <div class="col-12 d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-primary submit-fn-btn">Save</button><button type="button" class="btn btn-sm btn-secondary cancel-fn-btn">Cancel</button></div>
+                    </form>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="col-lg-4 mt-3 mt-lg-0">
+                <div class="p-3 rounded-3 bg-light h-100">
+                  <h6 class="mb-2">Quick Info</h6>
+                  <p class="small text-muted mb-2">Platform Wallet Address:</p><div class="fw-monospace small text-truncate">{{platform_wallet}}</div>
+                  <hr>
+                  <p class="small text-muted mb-2">Owner Wallet Address:</p><div class="fw-monospace small text-truncate">{{owner}}</div>
+                  <hr>
+                  <p class="small text-muted mb-2">Platform Fees (max 500):</p><div class="fw-monospace small text-truncate">Current Fee: {{fee_bps}} (100 = 1%)</div>
+                  <hr>
+                  <h6 class="mb-2">Status</h6>{% if paused %}<div class="badge bg-danger mb-2">Inactive</div>{% else %}<div class="badge bg-success mb-2">Active</div>{% endif %}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div> {% endcomment %}
+
+  <div class="row"><div class="col-12"><div class="spacer-before-models mt-4"></div></div></div>
+
+  <!-- Confirmation modal -->
+  <div id="confirmModal" class="d-none" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="confirm-modal-backdrop"></div>
+    <div class="confirm-modal-content rounded-3 p-3 shadow-lg">
+      <h5 id="confirmModalTitle">Confirm action</h5>
+      <p class="small text-muted" id="confirmModalMessage">Are you sure?</p>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" id="confirmCancelBtn" class="btn btn-sm btn-secondary">Cancel</button>
+        <button type="button" id="confirmOkBtn" class="btn btn-sm btn-danger">Yes, proceed</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{{ block.super }}
+{% endblock %}
+
+{% block extrajs %}
+  {{ block.super }}
+  <script src="{% static 'contract/contract.js' %}"></script>
+{% endblock %}

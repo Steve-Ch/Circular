@@ -1,0 +1,25 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+  <div style="max-width:600px; margin:2rem auto;">
+    <h1 style="color:#dc3545;">❌ Disapprove Organization: {{ organization.name }}</h1>
+    <p>Please tell us why your reason for disapproval. This will be emailed to <strong>{{ organization.user.email }}</strong>.</p>
+
+    <form method="post" action="{% url 'admin:disapprove_organization' organization.id %}">
+      {% csrf_token %}
+      <textarea name="reason"
+                rows="6"
+                style="width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px;"
+                placeholder="Enter reason for disapproval..."
+                required></textarea>
+      <br><br>
+      <button type="submit"
+              style="background:#dc3545; color:white; padding:8px 20px; border:none; border-radius:4px;">
+        Confirm Denial
+      </button>
+      <a href="{% url 'admin:accounts_organization_change' organization.id %}"
+         style="margin-left:1rem; text-decoration:none;">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

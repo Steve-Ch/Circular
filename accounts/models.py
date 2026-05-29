@@ -10,6 +10,19 @@ from imagekit.processors import ResizeToFit
 # Create your models here.
 
 
+class Estate(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    location = models.TextField()
+    state = models.CharField(max_length=100)
+    town = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        self.name = self.name.title()
+        self.state = self.state.title()
+        super().save(*args, **kwargs)
 
 
 class TimeStamps(models.Model):
@@ -58,11 +71,13 @@ class User(AbstractUser):
             blank=True,null=True
         )    
     is_active = models.BooleanField(default=False)
+    is_rider = models.BooleanField(default=False)
     pin=models.CharField(max_length=5,validators=[MinLengthValidator(5),MaxLengthValidator(5)],default=00000)
     otp = models.CharField(max_length=6,null=True,blank=True)
     otp_expiry = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     address = models.CharField(max_length=30, blank=True, null=True)
+    estate = models.ForeignKey(Estate, blank = True, null=True, on_delete=models.CASCADE)
 
 
     USERNAME_FIELD = "email"
@@ -85,3 +100,5 @@ class User(AbstractUser):
 
 #     class Meta:
 #         verbose_name_plural = "Addresses"
+
+

@@ -14,9 +14,11 @@ from .serializers import (
     UserPasswordResetSerializer,
     UserConfirmPasswordResetSerializer,
     UserUpdateSerializer,
+    EstateSerializer,
     )
 from.utils import validate_otp, generate_otp, send_reset_password_otp,send_mail
-
+from .models import Estate
+from rest_framework.views import APIView
 # Create your views here.
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -85,7 +87,8 @@ class UserConfirmPasswordResetView(generics.GenericAPIView):
         if serializer.is_valid(raise_exception=True):
             otp = serializer.validated_data.get("otp")
             new_password = serializer.validated_data.get("new_password")
-            user = validate_otp(otp)
+            email = serializer.validated_data.get("email")
+            user = validate_otp(otp, email)
             user.set_password(new_password)
             user.save()
             send_mail(
@@ -99,10 +102,18 @@ class UserConfirmPasswordResetView(generics.GenericAPIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UpdateUserView(generics.RetrieveUpdateAPIView):
+
+class UpdateUserView(generics.UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.JSONParser]
     serializer_class = UserUpdateSerializer
 
+    
     def get_object(self):
         return self.request.user
+
+
+class EstateListAPIView(generics.ListAPIView):
+    serializer_class = EstateSerializer
+    queryset = Estate.objects.all()
+

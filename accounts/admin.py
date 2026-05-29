@@ -1,9 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User
+from .models import User, Estate
+
 
 # admin.site.register(User)
+admin.site.register(Estate)
+
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -23,7 +26,7 @@ class CustomUserAdmin(UserAdmin):
     # 1. Fixed Fieldsets (for editing existing users)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'phone_number', 'address')}),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'phone_number', 'estate', 'address')}),
         (_('Permissions'), {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
@@ -51,7 +54,7 @@ class CustomUserAdmin(UserAdmin):
 
     def get_readonly_fields(self, request, obj=None):
             if obj:
-                readonly = super().get_readonly_fields(request, obj) + ('email','phone_number','last_login', 'date_joined','first_name', 'last_name', 'address')
+                readonly = super().get_readonly_fields(request, obj) + ('email','phone_number','last_login', 'date_joined','first_name', 'last_name', 'estate', 'address')
                 if not request.user.is_superuser:
                     readonly = readonly + ('is_superuser','is_staff','groups', 'user_permissions','groups')
                 return readonly

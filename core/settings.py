@@ -83,7 +83,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 15728640
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -279,8 +279,8 @@ JAZZMIN_UI_TWEAKS = {
 
 
 
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = config('EMAIL_PORT',cast=int)
@@ -309,3 +309,5 @@ PAYSTACK_PUBLIC_KEY = "pk_test_7cee1859e12a60f0b5b6e0d5115045f7dc5fb353"
 PAYSTACK_BASE_URL = "https://api.paystack.co"
 CALLBACK_URL = "https://www.google.com" 
 SIGNATURE_KEY = "6n6vXm8PjL2kR9a"
+RESEND_SENDER_EMAIL = "mail@circular.estate"
+RESEND_API_KEY = "re_HrebRS4e_QG313ZZPgCowHN71H6d4N298"

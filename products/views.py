@@ -15,9 +15,8 @@ from django.db.models import Avg, Value
 from django.db.models.functions import Coalesce
 from django.db.models import Prefetch
 from .models import (
-    Product, Cart,
-    CartItem,Order, Review,
-    OrderItem, Transaction,
+    Product, Cart,CartItem,Order,
+    Review,OrderItem, Transaction,
     ProductImage, Category
     )
 from .serializers import (
@@ -28,7 +27,7 @@ from .serializers import (
     CheckoutResponseSerializer,
     ProductListSerializer,
     CategorySerializer,
-    ReviewSerializer
+    ReviewSerializer,
     )
 
 # Create your views here.
@@ -67,6 +66,7 @@ class ProductListAPIView(generics.ListAPIView):
 class CategoryListAPIView(generics.ListAPIView):
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
+
 
 
 class ReviewListAPIView(generics.ListAPIView):

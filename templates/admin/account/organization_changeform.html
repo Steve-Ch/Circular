@@ -1,0 +1,46 @@
+{% extends "admin/change_form.html" %}
+{% block submit_buttons_bottom %}
+  {{ block.super }}
+
+  <hr style="margin: 30px 0;">
+
+  <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 20px;">
+
+    <!-- APPROVE -->
+    <a href="{% url 'admin:approve_mail' original.id %}"
+       class="button"
+       style="
+         background:#28a745;
+         color:white;
+         border-radius:4px;
+         display: inline-flex;
+         align-items: center;
+         justify-content: center;
+         min-width: 140px;
+         height: 36px;
+         font-size: 14px;
+         text-decoration: none;
+       ">
+      Approval Mail
+    </a>
+
+    <!-- DENY -->
+    <a href="{% url 'admin:disapprove_mail' original.id %}"
+       class="button"
+       style="
+         background:#dc3545;
+         color:white;
+         border-radius:4px;
+         display: inline-flex;
+         align-items: center;
+         justify-content: center;
+         min-width: 140px;
+         height: 36px;
+         font-size: 14px;
+         text-decoration: none;
+       ">
+      Disapproval Mail
+    </a>
+
+  </div>
+{% endblock %}

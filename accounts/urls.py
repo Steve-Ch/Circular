@@ -11,6 +11,7 @@ from .views import (
     UserPasswordResetView,
     UserConfirmPasswordResetView,
     UpdateUserView,
+    EstateListAPIView
 )
 
 urlpatterns = [
@@ -23,4 +24,5 @@ urlpatterns = [
     path('password-reset/', UserPasswordResetView.as_view()),
     path('confirm-password-reset/', UserConfirmPasswordResetView.as_view()),
     path('my-profile/', UpdateUserView.as_view()),
+    path('estates', EstateListAPIView.as_view()),
 ]
