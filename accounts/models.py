@@ -6,23 +6,60 @@ from django.core.validators import MinLengthValidator,MaxLengthValidator
 import uuid
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFit
-
+from django.utils.html import format_html
+from django.core.exceptions import ValidationError 
 # Create your models here.
 
 
 class Estate(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    location = models.TextField()
+    address = models.TextField()
     state = models.CharField(max_length=100)
     town = models.CharField(max_length=100)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    image = ProcessedImageField(
+        upload_to='estates',
+        processors=[ResizeToFit(1024, 1024)],
+        format='JPEG',
+        options={'quality': 75},
+        blank=True,null=True
+    )
+
+    def image_preview(self):
+        if self.image:
+            return format_html('<img src="{}" style="max-height: 200px;" />', self.image.url)
+        return "No Image"
+
+    image_preview.short_description = "Image Preview"
 
     def __str__(self):
         return self.name
     
+    def clean(self):
+        # 1. Standardize the name to Title Case for validation
+        if self.name:
+            titled_name = self.name.title()
+            
+            # 2. Check if this title-cased name already exists (excluding the current record if editing)
+            queryset = Estate.objects.filter(name=titled_name)
+            if self.pk:
+                queryset = queryset.exclude(pk=self.pk)
+                
+            if queryset.exists():
+                raise ValidationError({'name': f"An estate named '{titled_name}' already exists."})
+
     def save(self, *args, **kwargs):
+        # Run the clean method validation manually in case save() is called outside the admin panel
+        self.full_clean() 
+        
         self.name = self.name.title()
         self.state = self.state.title()
+        self.town = self.town.title()
+        
         super().save(*args, **kwargs)
+    
+
 
 
 class TimeStamps(models.Model):

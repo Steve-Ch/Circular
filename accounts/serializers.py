@@ -8,8 +8,7 @@ from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ValidationError
-from django.contrib.auth.password_validation import validate_password
-from .utils import validate_otp, generate_otp, send_account_activation_otp
+from .utils import validate_otp, generate_otp, send_account_activation_otp, validate_password
 from .models import Estate
 
 class UserEmailUniqueValidator(UniqueValidator):
@@ -31,7 +30,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "Invalid email"})
+            raise serializers.ValidationError({"email": "Invalid email or password"})
 
         # If user exists but is not active
         if not user.is_active:
@@ -50,7 +49,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # If user is active → check password
         if not user.check_password(password):
             raise serializers.ValidationError({
-                "password": "Invalid password"
+                "password": "Invalid email or password"
             })
 
         # Generate tokens if all good
@@ -68,7 +67,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class EstateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Estate
-        fields = ['id','name', 'location', 'state', 'town']
+        fields = ['id','name', 'address', 'state', 'town', 'longitude', 'latitude']
 
 
 
@@ -121,11 +120,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        try:
-            validate_password(password=attrs["password"], user=None)
-        except ValidationError as err:
-            raise serializers.ValidationError(err.messages)
+        password = attrs['password']
+        secure, message = validate_password(password)
 
+        if not secure:
+            raise serializers.ValidationError({"password": message})
+        
         return attrs
 
     def create(self, validated_data):

@@ -11,7 +11,7 @@ import shortuuid
 from django.db import IntegrityError, transaction
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Avg
-
+from accounts.models import Estate
 
 
 class TimeStamps(models.Model):
@@ -55,7 +55,20 @@ class Product(models.Model):
 
     @property
     def image(self):
-        return self.images.first().image.url
+        # Added a safe check using .first() to prevent AttributeError if no images exist
+        first_image_obj = self.images.first()
+        if first_image_obj and first_image_obj.image:
+            return first_image_obj.image.url
+        return None
+
+
+    def image_preview(self):
+        """Displays the preview of the first product image in the admin panel."""
+        first_image_obj = self.images.first()
+        if first_image_obj and first_image_obj.image:
+            return format_html('<img src="{}" style="max-height: 100px; border-radius: 5px;" />', first_image_obj.image.url)
+        return "No Image"
+
 
     # @extend_schema_field(Decimal)
     def categories_display(self):
@@ -73,9 +86,18 @@ class Product(models.Model):
 
 
 def product_image_path(instance, filename):
-    product =instance.product
+    # 1. Safe fallback to prevent crashes if product is not linked yet
+    if instance and getattr(instance, 'product', None) and instance.product.name:
+        product_name = instance.product.name
+    else:
+        product_name = "unassigned"
+
+    # 2. Strip spaces and special characters for a clean filesystem name
+    clean_name = "".join([c for c in product_name if c.isalnum()]).lower()
     random_name = uuid.uuid4()
-    return f'product images/{product.name}/{random_name}.jpg'
+    
+    # 3. Flattens path to avoid Windows directory creation collisions (FileExistsError)
+    return f'product-images/{clean_name}-{random_name}.jpg'
 
 
 
@@ -116,6 +138,39 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name} ({self.rating}*)"
+
+
+
+
+
+class Transaction(TimeStamps, models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        SUCCESSFUL = "SUCCESSFUL", "Successful"
+        FAILED = "FAILED", "Failed"
+    
+    reference = models.CharField(max_length=15, unique=True)
+    user = models.ForeignKey(User, related_name='transactions', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
+
+
+    def save(self, *args, **kwargs):
+        if not self.reference: 
+            while True:
+                try:
+                    with transaction.atomic():
+                        self.reference = shortuuid.ShortUUID().random(length=20)
+                        super().save(*args, **kwargs)
+                    break
+                except IntegrityError:
+                    continue
+        else:
+            super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.reference
 
 
 
@@ -174,15 +229,14 @@ class Order(TimeStamps, models.Model):
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
-        PAID = "PAID", "Paid"
-        SHIPPED = "SHIPPED", "Shipped"
         DELIVERED = "DELIVERED", "Delivered"
         CANCELLED = "CANCELLED", "Cancelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user =  models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     address = models.CharField(max_length=50)
-    reference = models.CharField(max_length=15,unique=True)
+    estate = models.ForeignKey(Estate, on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
     status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
     full_name = models.CharField(max_length=30)
     email = models.EmailField()
@@ -195,6 +249,10 @@ class Order(TimeStamps, models.Model):
     @extend_schema_field(Decimal)
     def price_total(self):
         return self.items.aggregate(total=Sum('price_at_purchase'))['total'] or 0
+    
+    def phone_number(self):
+        return self.user.phone_number
+
 
     class Meta:
         ordering = ["-created_at"]
@@ -223,30 +281,6 @@ class OrderItem(models.Model):
             return self.price_at_purchase * self.quantity
         return 0
     
-
-
-class Transaction(TimeStamps, models.Model):
-
-    class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        SUCCESSFUL = "SUCCESSFUL", "Successful"
-        FAILED = "FAILED", "Failed"
-    
-    reference = models.CharField(max_length=15, unique=True)
-    user = models.ForeignKey(User, related_name='transactions', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
-
-
-    def save(self, *args, **kwargs):
-        if not self.reference: 
-            while True:
-                try:
-                    with transaction.atomic():
-                        self.reference = shortuuid.ShortUUID().random(length=15)
-                        super().save(*args, **kwargs)
-                    break
-                except IntegrityError:
-                    continue
-        else:
-            super().save(*args, **kwargs)
+    @property
+    def image(self):
+        return self.product.image_preview

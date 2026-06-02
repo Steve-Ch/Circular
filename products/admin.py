@@ -94,8 +94,8 @@ class CartAdmin(admin.ModelAdmin):
 class OrderItemInline(admin.StackedInline):
     model = OrderItem
     extra = 0  # Set this to 0 to remove empty placeholder rows
-    fields = ['product', 'price_at_purchase', 'quantity', 'sub_total']
-    readonly_fields = ('product', 'price_at_purchase', 'quantity', 'sub_total')
+    fields = ['product', 'price_at_purchase', 'quantity', 'sub_total', 'image']
+    readonly_fields = ('product', 'price_at_purchase', 'quantity', 'sub_total', 'image')
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -107,22 +107,14 @@ class OrderItemInline(admin.StackedInline):
 
 
 
-
-
-
-
-
-
-
-
-
-
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ('user', 'user__email', 'reference', 'status')
-    search_fields = ('user__email','reference')
-    readonly_fields = ('full_name','user', 'email', 'address', 'reference',)
+    list_display = ('user', 'email', 'phone_number', 'transaction', 'status', 'price_total', 'created_at')
+    search_fields = ('email','reference')
+    list_filter = ('estate','status')
+    fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total',]
+    readonly_fields = ('full_name','user', 'email', 'phone_number', 'estate', 'address', 'transaction', 'created_at','price_total',)
 
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):

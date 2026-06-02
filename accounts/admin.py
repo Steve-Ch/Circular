@@ -5,7 +5,13 @@ from .models import User, Estate
 
 
 # admin.site.register(User)
-admin.site.register(Estate)
+@admin.register(Estate)
+class EstateAdmin(admin.ModelAdmin):
+    list_display = ( 'name', 'town', 'state',)
+    search_fields = ('name',)
+    list_filter = ('state','town')
+    ordering = ['state', 'town', 'name']
+    readonly_fields = ('image_preview',)
 
 
 @admin.register(User)
