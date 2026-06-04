@@ -62,12 +62,42 @@ class Product(models.Model):
         return None
 
 
+    # def image_preview(self):
+    #     """Displays the preview of the first product image in the admin panel."""
+    #     first_image_obj = self.images.first()
+    #     if first_image_obj and first_image_obj.image:
+    #         return format_html('<img src="{}" style="max-height: 100px; border-radius: 5px;" />', first_image_obj.image.url)
+    #     return "No Image"
+
+
     def image_preview(self):
-        """Displays the preview of the first product image in the admin panel."""
-        first_image_obj = self.images.first()
-        if first_image_obj and first_image_obj.image:
-            return format_html('<img src="{}" style="max-height: 100px; border-radius: 5px;" />', first_image_obj.image.url)
+        """Displays clickable previews of the first 3 product images in a single row."""
+        # 1. Fetch up to the first 3 image objects efficiently
+        image_objs = self.images.all()[:3]
+        
+        if not image_objs:
+            return "No Image"
+
+        html_elements = []
+        
+        for obj in image_objs:
+            if obj.image:
+                # 2. Wrap each image in an <a> tag targeting a new tab (_blank)
+                html_elements.append(
+                    format_html(
+                        '<a href="{0}" target="_blank" style="margin-right: 8px; display: inline-block;">'
+                        '<img src="{0}" style="max-height: 100px; border-radius: 5px; border: 1px solid #ddd;" />'
+                        '</a>',
+                        obj.image.url
+                    )
+                )
+
+        # 3. Join all HTML blocks together into a single string row
+        if html_elements:
+            return format_html("".join(html_elements))
+        
         return "No Image"
+
 
 
     # @extend_schema_field(Decimal)
@@ -229,6 +259,7 @@ class Order(TimeStamps, models.Model):
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
+        IN_PROGRESS = "IN PROGRESS", "In Progress"
         DELIVERED = "DELIVERED", "Delivered"
         CANCELLED = "CANCELLED", "Cancelled"
 
@@ -248,8 +279,10 @@ class Order(TimeStamps, models.Model):
     @property
     @extend_schema_field(Decimal)
     def price_total(self):
-        return self.items.aggregate(total=Sum('price_at_purchase'))['total'] or 0
-    
+        # Multiply price by quantity for each item, then sum them together
+        return self.items.aggregate(
+            total=Sum(F('price_at_purchase') * F('quantity'))
+        )['total'] or 0
     def phone_number(self):
         return self.user.phone_number
 

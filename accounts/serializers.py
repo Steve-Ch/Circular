@@ -110,13 +110,15 @@ class RegisterSerializer(serializers.ModelSerializer):
             "email",
             "phone_number",
             "estate",
+            "address",
         )
         extra_kwargs = {
             "email": {"required": True},
             "password": {"required": True},
             "first_name": {"required": True},
             "last_name": {"required": True},
-            "phone_number": {"required": True}, 
+            "phone_number": {"required": True},
+            "address" : {"required": False} 
         }
 
     def validate(self, attrs):
@@ -202,16 +204,17 @@ class UserPasswordResetSerializer(serializers.Serializer):
 
 class UserConfirmPasswordResetSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6, min_length=6)
-    new_password = serializers.CharField(min_length=5, max_length=5)
+    new_password = serializers.CharField(min_length=8)
     email = serializers.EmailField(required=True)
 
-    # def validate(self, attrs):        
-    #     try:
-    #         validate_password(password=attrs.get("new_password"), user = None)
-    #     except ValidationError as err:
-    #         raise serializers.ValidationError(err.messages)
+    def validate(self, attrs):
+        password = attrs['new_password']
+        secure, message = validate_password(password)
 
-    #     return attrs
+        if not secure:
+            raise serializers.ValidationError({"password": message})
+        
+        return attrs
   
 
 

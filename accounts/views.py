@@ -103,7 +103,7 @@ class UserConfirmPasswordResetView(generics.GenericAPIView):
 
 
 
-class UpdateUserView(generics.UpdateAPIView):
+class UpdateUserView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.JSONParser]
     serializer_class = UserUpdateSerializer

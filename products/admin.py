@@ -9,30 +9,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from accounts.utils import generate_otp, validate_otp,send_html_mail
 from django.utils import timezone
 from datetime import timedelta
-
+from django.utils.html import format_html
 # Register your models here.
 
-# admin.site.register(Product)
-# admin.site.register(Cart)
-# admin.site.register(CartItem)
 admin.site.register(Review)
-# admin.site.register(OrderItem)
-# admin.site.register(Transaction)
 admin.site.register(Category)
-
-
-# @admin.register(LogEntry)
-# class LogEntryAdmin(admin.ModelAdmin):
-#     list_display = ('user', 'action_time', 'content_type', 'object_repr', 'action_flag', 'change_message', 'view_object_link')
-#     list_filter = ('user', 'content_type', 'action_flag')
-#     search_fields = ('object_repr', 'change_message')
-
-#     def view_object_link(self, obj):
-#         if obj.action_flag == 3:  # Deletion
-#             return "(deleted)"
-#         return format_html('<a href="{}">View</a>', obj.get_admin_url())
-    
-#     view_object_link.short_description = "View Object"
+# admin.site.register(Order)
 
 
 class ProductImageInline(admin.StackedInline):
@@ -110,11 +92,65 @@ class OrderItemInline(admin.StackedInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ('user', 'email', 'phone_number', 'transaction', 'status', 'price_total', 'created_at')
-    search_fields = ('email','reference')
+    # list_display = ('user', 'email', 'phone_number', 'estate', 'status_with_emoji', 'price_total', 'created_at')
+    list_display = ('user', 'price_total','status','phone_number', 'email',  'estate', 'created_at')
+    search_fields = ('full_name', 'items__product__name')
     list_filter = ('estate','status')
     fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total',]
     readonly_fields = ('full_name','user', 'email', 'phone_number', 'estate', 'address', 'transaction', 'created_at','price_total',)
+
+ # 2. Created the custom list display method
+    # def status_with_emoji(self, obj):
+    #     status_mapping = {
+    #         "PENDING": "⏳ Pending",
+    #         "IN PROGRESS": "🏍️ In Progress",
+    #         "DELIVERED": "✅ Delivered",
+    #         "CANCELLED": "❌ Cancelled",
+    #     }
+    #     # Looks up the current status or falls back to raw status text
+    #     return format_html(status_mapping.get(obj.status, obj.status))
+    
+    # # 3. Formatted column headers and enabled database sorting
+    # status_with_emoji.short_description = 'Status'
+    # status_with_emoji.admin_order_field = 'status'
+
+
+    # 1. Register the action locally within this ModelAdmin
+    actions = ['Accept_Orders']
+
+    # 2. Define the action as a method (notice the 'self' argument)
+    @admin.action(description="Accept selected Orders")
+    def Accept_Orders(self, request, queryset):
+        # 3. Restrict execution to the "Rider" group
+        if not request.user.groups.filter(name='Rider').exists():
+            self.message_user(
+                request, 
+                "Error: Only members of the 'Rider' group can perform this action.", 
+                level=messages.ERROR
+            )
+            return
+
+        # 4. Perform the logic
+# 2. Get the total number of items the user selected
+        total_selected = queryset.count()
+
+        # 3. Filter the queryset to only include "pending" items
+        pending_items = queryset.filter(status=Order.Status.PENDING)
+        
+        # 4. Update only the filtered pending items
+        updated_count = pending_items.update(status=Order.Status.IN_PROGRESS)
+        
+        # 5. Calculate how many items were ignored
+        ignored_count = total_selected - updated_count
+
+        # 6. Send the breakdown message to the user
+        message = f"Successfully updated {updated_count} order(s) to 'In Progress'."
+        if ignored_count > 0:
+            message += f" Ignored {ignored_count} order(s) because they were not 'Pending'."
+            
+        self.message_user(request, message, level=messages.SUCCESS)        
+        
+
 
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
@@ -133,6 +169,12 @@ class OrderAdmin(admin.ModelAdmin):
                 '<uuid:pk>/send-otp/',
                 self.admin_site.admin_view(self.confirm_delivery),
                 name='confirm_delivery'
+            ),
+
+            path(
+                '<uuid:pk>/accept-order/',
+                self.admin_site.admin_view(self.begin_delivery),
+                name='accept_order'
             ),
             
         ]
@@ -184,8 +226,40 @@ class OrderAdmin(admin.ModelAdmin):
         subject = "Delivery Confimation Mail"
         message = f"""Hello {user.full_name}, please use the 6-digit code to validate your delivery with the driver, Thanks"""
         send_html_mail(user.email,subject,message, otp=otp)
-        messages.success(request, "✅ OTP sent successfully.")
+        messages.success(request, "OTP sent successfully.")
         return redirect(reverse('admin:products_order_change', args=[pk]))
+
+
+
+
+
+    def begin_delivery(self, request, pk):
+        
+        order = get_object_or_404(Order, pk=pk)
+        user = order.user
+        if order.status == Order.Status.PENDING:
+            order.status = Order.Status.IN_PROGRESS
+            order.save()
+
+            subject = "Delivery In Progress"
+            message = f"""Hello {user.full_name}, your item delivery is in progress. the rider would reach out to you soon for pickup"""
+            send_html_mail(user.email,subject,message)
+
+            messages.success(request, "Order Accepted Successfully.")
+            return redirect(reverse('admin:products_order_changelist'))
+        
+        
+            
+        else:
+            messages.error(request, "Only pending orders can be accepted")
+            return redirect(reverse('admin:products_order_change', args=[pk]))
+            
+
+
+
+
+
+
 
 
 
