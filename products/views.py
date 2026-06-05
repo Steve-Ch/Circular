@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework import generics, status, permissions, parsers, exceptions
+from rest_framework import generics, status, permissions, parsers, exceptions, serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.response import Response
@@ -17,7 +17,7 @@ from django.db.models import Prefetch
 from .models import (
     Product, Cart,CartItem,Order,
     Review,OrderItem, Transaction,
-    ProductImage, Category
+    ProductImage, Category,RefundRequest
     )
 from .serializers import (
     ProductSerializer, 
@@ -28,8 +28,8 @@ from .serializers import (
     ProductListSerializer,
     CategorySerializer,
     ReviewSerializer,
+    CancelOrderSerializer
     )
-
 # Create your views here.
 
 
@@ -253,3 +253,31 @@ class paystack_webhook(APIView):
             finalize_order(data['reference'], data['status'])
 
             return Response({}, status=200)
+
+
+
+
+class CancelOrderView(generics.CreateAPIView):
+    serializer_class = CancelOrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 1. Look up the order using the UUID from the URL path variables
+        order_id = self.kwargs.get("order_id")
+        
+        # 2. Ensure the order exists and belongs exclusively to the logged-in user
+        order = get_object_or_404(Order, id=order_id, user=self.request.user)
+        
+        # 3. Guard: Prevent cancelling if it's already cancelled or delivered
+        if order.status == Order.Status.CANCELLED:
+            raise serializers.ValidationError({"detail": "This order has already been cancelled."})
+        if order.status == Order.Status.DELIVERED:
+            raise serializers.ValidationError({"detail": "Cannot cancel an order that has already been delivered."})
+        if order.status == Order.Status.IN_PROGRESS:
+            raise serializers.ValidationError({'detail':'cannot cancel, order is already on its way'})    
+        # 4. Guard: OneToOneField safety check to avoid IntegrityError
+        if RefundRequest.objects.filter(order=order).exists():
+            raise serializers.ValidationError({"detail": "A cancellation request already exists for this order."})
+
+        # 5. Pass the verified order object into the serializer's validated data
+        serializer.save(order=order)

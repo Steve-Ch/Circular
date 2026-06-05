@@ -2,9 +2,11 @@ from django.contrib import admin,messages
 from django.urls import path, reverse
 from .models import (
     Product, Cart,Review,
-    CartItem,Order,ProductImage,
+    CartItem,Order,ProductImage, RefundRequest,
     OrderItem, Transaction, Category
     )
+import requests
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from accounts.utils import generate_otp, validate_otp,send_html_mail
 from django.utils import timezone
@@ -14,7 +16,7 @@ from django.utils.html import format_html
 
 admin.site.register(Review)
 admin.site.register(Category)
-# admin.site.register(Order)
+# admin.site.register(Transaction)
 
 
 class ProductImageInline(admin.StackedInline):
@@ -254,6 +256,85 @@ class OrderAdmin(admin.ModelAdmin):
             messages.error(request, "Only pending orders can be accepted")
             return redirect(reverse('admin:products_order_change', args=[pk]))
             
+
+
+
+
+
+
+@admin.register(RefundRequest)
+class RefundrequestAdmin(admin.ModelAdmin):
+    list_display = ('order__full_name','status','cancellation_reason','created_at')
+    search_fields = ('order__full_name',)
+    list_filter = ('status',)
+    fields = ['order', 'cancellation_reason', 'cancellation_note', 'status', 'paystack_reference']
+    readonly_fields = ('order', 'cancellation_reason', 'cancellation_note', 'status', 'paystack_reference')
+
+
+
+    
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        if object_id:
+            # Dynamically applies template for the edit page
+            self.change_form_template = 'admin/products/refund_request_change.html'
+        else:
+            self.change_form_template = None
+            
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                '<uuid:pk>/refund-user/',
+                self.admin_site.admin_view(self.trigger_paystack_refund),
+                name='process_refund'
+            ),
+            
+        ]
+        return custom + urls
+
+
+
+
+    def trigger_paystack_refund(self, request, pk):
+        refund_obj = get_object_or_404(RefundRequest, pk=pk)
+        reference = refund_obj.order.transaction.reference
+        
+        # Use get_cancellation_reason_display() to show "Bought by mistake" instead of "MISTAKE"
+        reason = refund_obj.get_cancellation_reason_display() 
+        
+        # FIXED: Added the 'api.' subdomain
+        url = "https://api.paystack.co/refund" 
+        
+        headers = {
+            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "transaction": reference,
+            "customer_note": f"Cancellation due to: {reason}"
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response_data = response.json()
+
+            if response.status_code != 200 or not response_data.get("status"):
+                # Pull the exact error message from Paystack if it fails
+                error_msg = response_data.get("message", "Paystack refund error.")
+                messages.error(request, f"Refund failed: {error_msg}")
+                return redirect(reverse('admin:products_refundrequest_change', args=[pk]))
+
+            # Update the local DB status to reflect the successful payout request
+            refund_obj.status = refund_obj.STATUS_CHOICES.REFUNDED
+            refund_obj.save()
+
+            messages.success(request, f"Paystack refund request made successfully: {response_data.get('message')}")
+            return redirect(reverse('admin:products_refundrequest_change', args=[pk]))
+            
+        except requests.RequestException as e:
+            messages.error(request, f"Request failed: {e}")
+            return redirect(reverse('admin:products_refundrequest_change', args=[pk]))
 
 
 

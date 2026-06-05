@@ -121,7 +121,7 @@ def finalize_order(ref, status):
                 order = Order.objects.create(
                     user=user,
                     transaction=transaction,
-                    status=Order.Status.PAID,
+                    status=Order.Status.PENDING,
                     full_name=f"{user.first_name} {user.last_name}",
                     email=user.email,
                     estate = user.estate,

@@ -4,7 +4,7 @@ from decimal import Decimal
 from .models import (
     Product, Cart,CartItem,Order,
     OrderItem,ProductImage,Review,
-    Category,
+    Category, RefundRequest
     )
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
@@ -163,3 +163,32 @@ class CheckoutResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     checkout_url = serializers.URLField()
 
+
+class CancelOrderSerializer(serializers.ModelSerializer):
+    # Enforce validation using your model's text choices
+    cancellation_reason = serializers.ChoiceField(choices=RefundRequest.CANCELLATION_REASONS.choices)
+
+    class Meta:
+        model = RefundRequest
+        fields = ['cancellation_reason', 'cancellation_note']
+
+    def create(self, validated_data):
+        print(validated_data)
+        # Fetch the order injected from the view's perform_create
+        order = validated_data['order']
+        
+        # 1. Update the parent order status to CANCELLED
+
+        order.status = order.Status.CANCELLED
+        order.save()
+        
+
+        
+        # 2. Extract Paystack reference if a transaction exists on the order
+        paystack_ref = order.reference() if order.transaction else None
+
+        # 3. Create and return the Refund_Request instance
+        return RefundRequest.objects.create(
+            paystack_reference=paystack_ref,
+            **validated_data
+        )

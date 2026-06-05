@@ -62,14 +62,6 @@ class Product(models.Model):
         return None
 
 
-    # def image_preview(self):
-    #     """Displays the preview of the first product image in the admin panel."""
-    #     first_image_obj = self.images.first()
-    #     if first_image_obj and first_image_obj.image:
-    #         return format_html('<img src="{}" style="max-height: 100px; border-radius: 5px;" />', first_image_obj.image.url)
-    #     return "No Image"
-
-
     def image_preview(self):
         """Displays clickable previews of the first 3 product images in a single row."""
         # 1. Fetch up to the first 3 image objects efficiently
@@ -99,15 +91,18 @@ class Product(models.Model):
         return "No Image"
 
 
-
-    # @extend_schema_field(Decimal)
     def categories_display(self):
         return [cat.name for cat in self.categories.all()]
     categories_display.short_description = "Categories"
 
-    # @property
-    # def average_rating(self):
-    #     return self.reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+    @property
+    def average_rating(self):
+        """Calculates the average rating from related reviews."""
+        # Use the 'reviews' related_name you defined on your Review model
+        result = self.reviews.aggregate(Avg('rating'))['rating__avg']
+        
+        # Round the result to 1 decimal place, or return 0 if there are no reviews
+        return round(result, 1) if result is not None else 0.0
 
 
     def __str__(self):
@@ -285,7 +280,8 @@ class Order(TimeStamps, models.Model):
         )['total'] or 0
     def phone_number(self):
         return self.user.phone_number
-
+    def reference(self):
+        return self.transaction.reference
 
     class Meta:
         ordering = ["-created_at"]
@@ -317,3 +313,22 @@ class OrderItem(models.Model):
     @property
     def image(self):
         return self.product.image_preview
+
+
+class RefundRequest(TimeStamps, models.Model):
+
+    class CANCELLATION_REASONS(models.TextChoices):
+        MISTAKE = 'MISTAKE', 'Bought by mistake'
+        DELAY = 'DELAY', 'Delivery time is too long'
+        PRICE = 'PRICE', 'Found a better price elsewhere'
+        OTHER = 'OTHER', 'Other reasons'
+
+    class STATUS_CHOICES(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        REFUNDED = 'REFUNDED', 'Refunded'
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.PENDING)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    paystack_reference = models.CharField(max_length=100, null=True, blank=True)
+    cancellation_reason = models.CharField(max_length=20, choices=CANCELLATION_REASONS.choices, default=CANCELLATION_REASONS.OTHER)
+    cancellation_note = models.TextField(null=True, blank=True)

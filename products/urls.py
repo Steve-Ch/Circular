@@ -12,6 +12,7 @@ from .views import (
     ReviewListAPIView,
     ReviewDetailAPIView,
     CategoryListAPIView,
+    CancelOrderView
 )
 
 
@@ -28,5 +29,6 @@ urlpatterns = [
     path('my-cart/edit/<uuid:pk>/', CartItemUpdateDestroyAPIView.as_view()),
     path('my-cart/checkout', CheckoutView.as_view()),
     path('paystack-verify/<str:key>', paystack_webhook.as_view()),
+    path('my-orders/<uuid:order_id>/cancel/', CancelOrderView.as_view(), name='cancel-order'),
 ]
 
