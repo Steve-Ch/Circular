@@ -74,47 +74,8 @@ class ProductListSerializer(serializers.ModelSerializer):
         # Uses prefetched data (no DB hit)
         return [cat.name for cat in obj.categories.all()]
     
-    # @extend_schema_field(serializers.CharField)
-    # def get_image(self, obj):
-    #     # Uses the attribute we created in the View (no DB hit)
-    #     images = getattr(obj, 'first_image_list', [])
-    #     if images:
-    #         first_image = images[0]
-    #         request = self.context.get('request')
-    #         if request:
-    #             return request.build_absolute_uri(first_image.image.url)
-    #         return first_image.image.url
-    #     return None
 
 
-
-# class ProductListSerializer(serializers.ModelSerializer):
-
-#     # categories = serializers.ListField(
-#     #     child=serializers.CharField(min_length=5),
-#     #     min_length=1, required=True, write_only=True
-#     # )
-#     average_rating = serializers.FloatField(source='avg_rating', read_only=True)
-#     image=serializers.SerializerMethodField(read_only=True)
-#     class Meta:
-#         model = Product
-#         fields = ['id', 'name', 'price', 'image', 'average_rating']
-
-#     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
-#     def get_categories_display(self, obj):
-#         return [cat.name for cat in obj.categories.all()]
-    
-#     @extend_schema_field(serializers.CharField)
-#     def get_image(self, obj):
-#         first_image = obj.images.first()
-#         if first_image and first_image.image:
-#             # Get the request from the serializer context
-#             request = self.context.get('request')
-#             if request is not None:
-#                 # This prepends the domain/base URL
-#                 return request.build_absolute_uri(first_image.image.url)
-#             return first_image.image.url
-#         return None
 
 
 
@@ -128,6 +89,10 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ['id', 'product', 'image', 'price', 'quantity', 'total_price']
         read_only_fields = ['id', 'product', 'price', 'total_price']
+        extra_kwargs = {
+            "quantity": {"required": True},
+            
+        }
         
 
     @extend_schema_field(Decimal)
@@ -187,7 +152,6 @@ class CancelOrderSerializer(serializers.ModelSerializer):
         # 2. Extract Paystack reference if a transaction exists on the order
         paystack_ref = order.reference() if order.transaction else None
 
-        # 3. Create and return the Refund_Request instance
         return RefundRequest.objects.create(
             paystack_reference=paystack_ref,
             **validated_data

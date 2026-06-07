@@ -55,14 +55,14 @@ class ProductAdmin(admin.ModelAdmin):
 class CartItemInline(admin.StackedInline):
     model = CartItem
     extra = 0  # Set this to 0 to remove empty placeholder rows
-    fields = ['product', 'price', 'quantity', 'sub_total']
-    readonly_fields = ('product', 'price', 'quantity', 'sub_total')
+    fields = ['product', 'quantity','price','sub_total', 'image_preview']
+    readonly_fields = ('product', 'price', 'quantity', 'price','sub_total', 'image_preview')
 
     def has_add_permission(self, request, obj=None):
         return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     return False
 
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
@@ -98,8 +98,8 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ('user', 'price_total','status','phone_number', 'email',  'estate', 'created_at')
     search_fields = ('full_name', 'items__product__name')
     list_filter = ('estate','status')
-    fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total',]
-    readonly_fields = ('full_name','user', 'email', 'phone_number', 'estate', 'address', 'transaction', 'created_at','price_total',)
+    fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total','rider']
+    readonly_fields = ('full_name','user', 'email', 'phone_number', 'estate', 'address', 'transaction', 'created_at','price_total', 'rider')
 
  # 2. Created the custom list display method
     # def status_with_emoji(self, obj):
@@ -140,7 +140,7 @@ class OrderAdmin(admin.ModelAdmin):
         pending_items = queryset.filter(status=Order.Status.PENDING)
         
         # 4. Update only the filtered pending items
-        updated_count = pending_items.update(status=Order.Status.IN_PROGRESS)
+        updated_count = pending_items.update(status=Order.Status.IN_PROGRESS, rider=request.user.email)
         
         # 5. Calculate how many items were ignored
         ignored_count = total_selected - updated_count
@@ -241,6 +241,7 @@ class OrderAdmin(admin.ModelAdmin):
         user = order.user
         if order.status == Order.Status.PENDING:
             order.status = Order.Status.IN_PROGRESS
+            order.rider = request.user.email
             order.save()
 
             subject = "Delivery In Progress"

@@ -51,14 +51,20 @@ def send_email_with_html(subject, context, html_template_path, recipient_list):
     
 
     try:
-        Emails.send({
-        "from": f"Circular <{settings.RESEND_SENDER_EMAIL}>",
-        "to": recipient_list,
-        "subject": subject,
-        "html": html_content
-    })
+        # Loop over recipients so they don't see each other's email addresses
+        # This also avoids hitting batch delivery errors on restricted API keys
+        for recipient in recipient_list:
+            resend.Emails.send({
+                "from": f"Circular <{settings.RESEND_SENDER_EMAIL}>",
+                "to": recipient,
+                "subject": subject,
+                "html": html_content
+            })
+            print(f"Successfully sent email to {recipient}")
+            
     except Exception as e:
-        print("Failed to send email:", e)
+        # Check your server terminal/logs to see this exact print message output!
+        print("Failed to send email via Resend API:", str(e))
 
 
 def send_email_in_thread(subject, context, html_template_path, recipient_list,support=True):

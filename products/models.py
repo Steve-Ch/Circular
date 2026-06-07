@@ -233,6 +233,12 @@ class CartItem(models.Model):
     @property
     def image(self):
         return self.product.images.first().image.url
+    
+    @property
+    def image_preview(self):
+        return self.product.image_preview
+    
+    
 
     @property
     @extend_schema_field(Decimal)
@@ -266,6 +272,7 @@ class Order(TimeStamps, models.Model):
     status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
     full_name = models.CharField(max_length=30)
     email = models.EmailField()
+    rider = models.CharField(max_length=25, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.email} | {self.full_name}"

@@ -1,3 +1,4 @@
+from django.db.models import F
 from django.shortcuts import render
 from rest_framework import generics, status, permissions, parsers, exceptions, serializers
 from django_filters.rest_framework import DjangoFilterBackend
@@ -152,15 +153,50 @@ class CartItemCreateAPIView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     # queryset = CartItem.objects.all()
 
-    def perform_create(self, serializer):
-        Product_id = self.kwargs.get('product_id')
-        
-        product = get_object_or_404(Product, pk=Product_id)
+
+class CartItemCreateAPIView(generics.CreateAPIView):
+    serializer_class = CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        product_id = self.kwargs.get('product_id')
+        product = get_object_or_404(Product, pk=product_id)
         cart, created = Cart.objects.get_or_create(user=self.request.user)
-        quantity = serializer.validated_data.get('quantity')
-        if quantity > product.quantity:
-            raise ValidationError({"quantity":"you can't order more than the available quantity"})
+        
+        # Validate the incoming data structure first
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        requested_quantity = serializer.validated_data.get('quantity')
+
+        # Check if this product is already in the user's cart
+        existing_item = CartItem.objects.filter(cart=cart, product=product).first()
+
+        if existing_item:
+            # Calculate total quantity if we add the new request
+            new_quantity = existing_item.quantity + requested_quantity
+            
+            # Check against the product stock limit
+            if new_quantity > product.quantity:
+                raise ValidationError({
+                    "quantity": f"You can't add more items. Max available is {product.quantity}. You already have {existing_item.quantity} in cart."
+                })
+            
+            # Update existing instance and save
+            existing_item.quantity = new_quantity
+            existing_item.save()
+            
+            # Serialize the updated item to return it in the response
+            return_serializer = self.get_serializer(existing_item)
+            return Response(return_serializer.data, status=status.HTTP_200_OK)
+        
+        # If item doesn't exist in cart yet, perform standard check and creation
+        if requested_quantity > product.quantity:
+            raise ValidationError({"quantity": f"You can't order more than the available quantity ({product.quantity})."})
+            
         serializer.save(product=product, cart=cart)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class CartItemUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -172,6 +208,22 @@ class CartItemUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         return CartItem.objects.filter(cart=user.cart)
 
+
+
+class ClearCartAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        # Fetch the user's cart (or 404 if they somehow don't have one yet)
+        cart = get_object_or_404(Cart, user=request.user)
+        
+        # Delete all items attached to this cart
+        cart.items.all().delete()
+        
+        # Return a 204 No Content response indicating success
+        return Response(
+            {"detail": "Cart cleared successfully."}
+        )
 
 
 class CheckoutView(generics.GenericAPIView):
