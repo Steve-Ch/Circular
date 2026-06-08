@@ -125,31 +125,34 @@ def finalize_order(ref, status):
                     full_name=f"{user.first_name} {user.last_name}",
                     email=user.email,
                     estate = user.estate,
-                    address=user.address
+                    address=user.address,
                 )
 
                 order_items = []
                 for item in cart_items:
+                    product = Product.objects.get(id=item.product.id)
+
                     # LOCK the product row so nobody else can change its quantity right now
-                    product = Product.objects.select_for_update().get(id=item.product.id)
+                    # product = Product.objects.select_for_update().get(id=item.product.id)
                     
-                    if product.quantity < item.quantity:
-                        # This triggers the rollback of the transaction.atomic()
-                        raise ValidationError(f"Stock ran out for {product.name} during payment.")
+                    # if product.quantity < item.quantity:
+                    #     # This triggers the rollback of the transaction.atomic()
+                    #     raise ValidationError(f"Stock ran out for {product.name} during payment.")
 
                     # Use F expression to avoid Python-level race conditions
-                    product.quantity = F('quantity') - item.quantity
-                    product.save()
+                    # product.quantity = F('quantity') - item.quantity
+                    # product.save()
                     
                     # Refresh from DB to get the current price for order_items
-                    product.refresh_from_db() 
+                    # product.refresh_from_db() 
                     
                     order_items.append(
                         OrderItem(
                             order=order,
                             product=product,
                             quantity=item.quantity,
-                            price_at_purchase=product.price
+                            price_at_purchase=product.price,
+                            product_name = product.name,
                         )
                     )
 

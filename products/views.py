@@ -40,7 +40,7 @@ from django.db.models import OuterRef, Subquery
 
 class ProductListAPIView(generics.ListAPIView):
     serializer_class = ProductListSerializer
-    queryset = Product.objects.filter(quantity__gte=1)
+    queryset = Product.objects.filter(display=True)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['categories__name',]
     search_fields = ['name']
@@ -62,7 +62,7 @@ class ProductSearchSuggestionAPIView(generics.ListAPIView):
         ).order_by('-created_at').values('image')[:1]
 
         # REMOVED [:10] FROM THE END HERE
-        return Product.objects.filter(quantity__gte=1).annotate(
+        return Product.objects.filter(display=True).annotate(
             image_url=Subquery(first_image_subquery)
         ).only('id', 'name').order_by('name')
 
@@ -120,7 +120,7 @@ class ReviewDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ProductRetrieveAPIView(generics.RetrieveAPIView):
-    queryset = Product.objects.filter(quantity__gte=1)
+    queryset = Product.objects.filter(display=True)
     serializer_class = ProductSerializer
     lookup_field = 'pk'
 
@@ -189,10 +189,10 @@ class CartItemCreateAPIView(generics.CreateAPIView):
             new_quantity = existing_item.quantity + requested_quantity
             
             # Check against the product stock limit
-            if new_quantity > product.quantity:
-                raise ValidationError({
-                    "quantity": f"You can't add more items. Max available is {product.quantity}. You already have {existing_item.quantity} in cart."
-                })
+            # if new_quantity > product.quantity:
+            #     raise ValidationError({
+            #         "quantity": f"You can't add more items. Max available is {product.quantity}. You already have {existing_item.quantity} in cart."
+            #     })
             
             # Update existing instance and save
             existing_item.quantity = new_quantity
@@ -203,8 +203,8 @@ class CartItemCreateAPIView(generics.CreateAPIView):
             return Response(return_serializer.data, status=status.HTTP_200_OK)
         
         # If item doesn't exist in cart yet, perform standard check and creation
-        if requested_quantity > product.quantity:
-            raise ValidationError({"quantity": f"You can't order more than the available quantity ({product.quantity})."})
+        # if requested_quantity > product.quantity:
+        #     raise ValidationError({"quantity": f"You can't order more than the available quantity ({product.quantity})."})
             
         serializer.save(product=product, cart=cart)
         headers = self.get_success_headers(serializer.data)
@@ -257,11 +257,11 @@ class CheckoutView(generics.GenericAPIView):
         cart_items = cart.items.select_related('product')
 
         # PRE-CHECK: Don't even start payment if stock is already gone
-        for item in cart_items:
-            if item.product.quantity < item.quantity:
-                return Response({
-                    "error": f"Only {item.product.quantity} units of {item.product.name} left."
-                }, status=status.HTTP_400_BAD_REQUEST)
+        # for item in cart_items:
+        #     if item.product.quantity < item.quantity:
+        #         return Response({
+        #             "error": f"Only {item.product.quantity} units of {item.product.name} left."
+        #         }, status=status.HTTP_400_BAD_REQUEST)
 
 
         address = request.user.address

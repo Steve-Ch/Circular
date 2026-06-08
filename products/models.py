@@ -43,13 +43,21 @@ class Product(TimeStamps, models.Model):
     description = models.TextField()
     categories = models.ManyToManyField(Category, related_name='projects', blank=False)
     price = models.DecimalField(decimal_places=2,max_digits=10)
-    quantity = models.PositiveIntegerField(
-        default=1,
-        validators=[
-            MinValueValidator(0),
-            MaxValueValidator(999)
-        ]
-    )
+    display = models.BooleanField(default=True,)
+
+
+    def save(self, *args, **kwargs):
+        # 1. Check if this is an update to an existing product
+        if self.pk:
+            old_instance = Product.objects.filter(pk=self.pk).first()
+            
+            # 2. Trigger deletion only if 'display' was True and is changing to False
+            if old_instance and old_instance.display and not self.display:
+                # Efficiently bulk delete matching items from all user carts
+                CartItem.objects.filter(product=self).delete()
+
+        # 3. Proceed with the normal save operation
+        super().save(*args, **kwargs)
     
 
 
@@ -268,8 +276,8 @@ class Order(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user =  models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     address = models.CharField(max_length=50)
-    estate = models.ForeignKey(Estate, on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
+    estate = models.ForeignKey(Estate, on_delete=models.SET_NULL, related_name='orders', null=True, blank=True)
+    transaction = models.ForeignKey(Transaction, on_delete=models.SET_NULL, related_name='orders', null=True, blank=True)
     status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
     full_name = models.CharField(max_length=30)
     email = models.EmailField()
@@ -289,7 +297,8 @@ class Order(TimeStamps, models.Model):
     def phone_number(self):
         return self.user.phone_number
     def reference(self):
-        return self.transaction.reference
+        return self.transaction.reference if self.transaction else None
+
 
     class Meta:
         ordering = ["-created_at"]
@@ -298,7 +307,10 @@ class Order(TimeStamps, models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    # 1. Allow the link to be NULL when product is deleted
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+
+    product_name = models.CharField(max_length=255, null=True, blank=True)
     quantity = models.PositiveIntegerField(
         default=1,
         validators=[
@@ -309,7 +321,7 @@ class OrderItem(models.Model):
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
+        return f"{self.product_name} x {self.quantity}"
 
     @property
     def sub_total(self):
@@ -320,7 +332,7 @@ class OrderItem(models.Model):
     
     @property
     def image(self):
-        return self.product.image_preview
+        return self.product.image_preview if self.product else None
 
 
 class RefundRequest(TimeStamps, models.Model):
