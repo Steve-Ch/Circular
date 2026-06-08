@@ -75,6 +75,13 @@ class ProductListSerializer(serializers.ModelSerializer):
         return [cat.name for cat in obj.categories.all()]
     
 
+class ProductSearchSuggestionSerializer(serializers.ModelSerializer):
+    # We pull the image string directly from our optimized queryset annotation
+    image_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'image_url']
 
 
 

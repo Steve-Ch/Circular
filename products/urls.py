@@ -13,12 +13,14 @@ from .views import (
     ReviewDetailAPIView,
     CategoryListAPIView,
     CancelOrderView,
-    ClearCartAPIView
+    ClearCartAPIView,
+    ProductSearchSuggestionAPIView,
 )
 
 
 urlpatterns = [
     path('products/', ProductListAPIView.as_view()),
+    path('products/suggestions/', ProductSearchSuggestionAPIView.as_view()),
     path('products/<uuid:pk>/', ProductRetrieveAPIView.as_view()),
     path('products/<uuid:pk>/reviews/', ReviewListAPIView.as_view()),
     path('products/<uuid:pk>/reviews/my-review/', ReviewDetailAPIView.as_view()),

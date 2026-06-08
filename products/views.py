@@ -18,7 +18,7 @@ from django.db.models import Prefetch
 from .models import (
     Product, Cart,CartItem,Order,
     Review,OrderItem, Transaction,
-    ProductImage, Category,RefundRequest
+    ProductImage, Category,RefundRequest,
     )
 from .serializers import (
     ProductSerializer, 
@@ -29,9 +29,13 @@ from .serializers import (
     ProductListSerializer,
     CategorySerializer,
     ReviewSerializer,
-    CancelOrderSerializer
+    CancelOrderSerializer,
+    ProductSearchSuggestionSerializer
     )
 # Create your views here.
+
+from django.db.models import OuterRef, Subquery
+
 
 
 class ProductListAPIView(generics.ListAPIView):
@@ -41,26 +45,35 @@ class ProductListAPIView(generics.ListAPIView):
     filterset_fields = ['categories__name',]
     search_fields = ['name']
     pagination_class = StandardResultsSetPagination
-    # ... your filters and pagination ...
-
-    # def get_queryset(self):
-    #     # 1. Prefetch only the first image to avoid loading all images
-    #     image_prefetch = Prefetch(
-    #         'images', 
-    #         queryset=ProductImage.objects.all(), # Replace ProductImage with your actual model name
-    #         to_attr='first_image_list'
-    #     )
-
-    #     return Product.objects.annotate(
-    #         # Coalesce replaces None with 0.0 if no reviews exist
-    #         avg_rating=Coalesce(Avg('reviews__rating'), Value(0.0))
-    #     ).prefetch_related(
-    #         image_prefetch,
-    #         'categories' # Prefetch categories to avoid N+1 in get_categories_display
-    #     ).all()
 
 
 
+class ProductSearchSuggestionAPIView(generics.ListAPIView):
+    serializer_class = ProductSearchSuggestionSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+    
+    # Disable pagination for suggestions so it doesn't return full pagination metadata
+    pagination_class = None 
+
+    def get_queryset(self):
+        first_image_subquery = ProductImage.objects.filter(
+            product=OuterRef('pk')
+        ).order_by('-created_at').values('image')[:1]
+
+        # REMOVED [:10] FROM THE END HERE
+        return Product.objects.filter(quantity__gte=1).annotate(
+            image_url=Subquery(first_image_subquery)
+        ).only('id', 'name').order_by('name')
+
+    def list(self, request, *args, **kwargs):
+        """Override list to safely slice the results AFTER filters have been applied."""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Safely slice the evaluated/filtered queryset to exactly 10 items
+        serializer = self.get_serializer(queryset[:10], many=True)
+        from rest_framework.response import Response
+        return Response(serializer.data)
 
 
 

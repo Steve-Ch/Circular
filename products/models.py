@@ -37,7 +37,7 @@ class Category(models.Model):
 
 
 
-class Product(models.Model):
+class Product(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=30)
     description = models.TextField()
@@ -126,7 +126,7 @@ def product_image_path(instance, filename):
 
 
 
-class ProductImage(models.Model):
+class ProductImage(TimeStamps, models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = ProcessedImageField(
         upload_to=product_image_path,
@@ -147,7 +147,8 @@ class ProductImage(models.Model):
     def __str__(self):
         return f"{self.image.name}"
 
-
+    class Meta:
+        ordering = ["-created_at"]
 
 class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
