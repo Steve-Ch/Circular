@@ -244,7 +244,7 @@ class CheckoutView(generics.GenericAPIView):
     serializer_class = CheckoutResponseSerializer 
 
     @extend_schema(request=None)
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         
         # serializer = self.get_serializer(data=request.data)
         # serializer.is_valid(raise_exception=True)

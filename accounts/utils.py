@@ -14,7 +14,8 @@ from django.template.loader import render_to_string
 from datetime import datetime
 from resend import Emails
 import re
-
+from django.core.mail import EmailMultiAlternatives, get_connection
+from django.utils.html import strip_tags
 
 resend.api_key = settings.RESEND_API_KEY
 
@@ -33,6 +34,40 @@ def validate_password(password):
     return True, 'success!'
 
 
+
+
+
+
+
+
+
+# def send_email_with_html(subject, context, html_template_path, recipient_list):
+#     html_content = render_to_string(html_template_path, context)
+#     text_content = f"{subject}"
+
+#     # Explicitly open a fresh connection for this thread
+#     connection = get_connection(
+#         backend=settings.EMAIL_BACKEND,
+#         fail_silently=False
+#     )
+
+#     try:
+#         msg = EmailMultiAlternatives(
+#             subject=subject, 
+#             body=text_content,             
+#             from_email=settings.EMAIL_HOST_USER, 
+#             to=recipient_list,
+#             connection=connection, # Pass the isolated thread connection here
+#         )
+
+#         msg.attach_alternative(html_content, "text/html")
+#         msg.send(fail_silently=False)      
+
+#     except Exception as e:
+#         print("Failed to send email:", str(e))
+#     finally:
+#         # Always close the thread's socket safely
+#         connection.close()
 
 
 
@@ -67,6 +102,13 @@ def send_email_with_html(subject, context, html_template_path, recipient_list):
         print("Failed to send email via Resend API:", str(e))
 
 
+
+
+
+
+
+
+
 def send_email_in_thread(subject, context, html_template_path, recipient_list,support=True):
     context['support']=support
     # Start a new thread to send the email
@@ -87,7 +129,7 @@ def send_account_activation_otp(email, otp):
 
     context={'title':'Welcome to Circlur , Let’s Get Started','otp': otp, message : message,'year': datetime.now().year}
     html_template_path="email/mail_template.html",
-    send_email_in_thread(subject,context,html_template_path,recipient_list)
+    send_email_with_html(subject,context,html_template_path,recipient_list)
 
 
 def send_reset_password_otp(email, otp):
@@ -95,7 +137,7 @@ def send_reset_password_otp(email, otp):
     recipient_list = [email]
     context={'title':'Password Reset','otp': otp,'year': datetime.now().year}
     html_template_path="email/mail_template.html",
-    send_email_in_thread(subject,context,html_template_path,recipient_list)
+    send_email_with_html(subject,context,html_template_path,recipient_list)
 
 #general mail function
 def send_html_mail(email, subject, message, title=None, support=True, otp=None):
@@ -112,12 +154,13 @@ def send_html_mail(email, subject, message, title=None, support=True, otp=None):
         'title': title, 
         'message': message, 
         'year': datetime.now().year, 
-        'otp': otp
+        'otp': otp,
+        'support': support
     }
     
     html_template_path = "email/mail_template.html" 
     
-    send_email_in_thread(subject, context, html_template_path, recipient_list, support)
+    send_email_in_thread(subject, context, html_template_path, recipient_list)
 
 
 

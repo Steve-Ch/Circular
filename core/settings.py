@@ -277,15 +277,29 @@ JAZZMIN_UI_TWEAKS = {
     "theme": "flatly",
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.hostinger.com'
+EMAIL_PORT = 587  # Or 587 if you prefer STARTTLS
+EMAIL_USE_SSL = False  # Set to False if using port 587
+EMAIL_USE_TLS = True # Set to True if using port 587
+EMAIL_HOST_USER = 'contact@circular.estate' # Your full Hostinger email address
+EMAIL_HOST_PASSWORD = 'myTechnology123@' # The password you created for this mailbox
+
+# DEFAULT_FROM_EMAIL = 'your-email@yourdomain.com'
+DEFAULT_FROM_EMAIL = 'mail@circular.estate'
 
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_USE_TLS = True
-EMAIL_PORT = config('EMAIL_PORT',cast=int)
-EMAIL_HOST_USER = config('EMAIL')
-EMAIL_HOST_PASSWORD = config('EMAIL_KEY')
+
+
+
+
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_USE_TLS = True
+# EMAIL_PORT = config('EMAIL_PORT',cast=int)
+# EMAIL_HOST_USER = config('EMAIL')
+# EMAIL_HOST_PASSWORD = config('EMAIL_KEY')
 
 
 SIMPLE_JWT = {

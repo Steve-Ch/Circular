@@ -184,7 +184,7 @@ class Transaction(TimeStamps, models.Model):
         SUCCESSFUL = "SUCCESSFUL", "Successful"
         FAILED = "FAILED", "Failed"
     
-    reference = models.CharField(max_length=15, unique=True)
+    reference = models.CharField(max_length=20, unique=True)
     user = models.ForeignKey(User, related_name='transactions', on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
