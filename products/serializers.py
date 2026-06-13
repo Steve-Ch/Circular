@@ -61,7 +61,6 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    average_rating = serializers.FloatField(source='avg_rating', read_only=True)
     # image = serializers.SerializerMethodField(read_only=True)
     categories_display = serializers.SerializerMethodField() # Added to match your method
 

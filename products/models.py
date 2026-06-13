@@ -12,6 +12,9 @@ from django.db import IntegrityError, transaction
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Avg
 from accounts.models import Estate
+import os
+from django.utils.text import slugify
+from nanoid import generate
 
 
 class TimeStamps(models.Model):
@@ -118,20 +121,20 @@ class Product(TimeStamps, models.Model):
 
 
 
+
 def product_image_path(instance, filename):
-    # 1. Safe fallback to prevent crashes if product is not linked yet
-    if instance and getattr(instance, 'product', None) and instance.product.name:
-        product_name = instance.product.name
-    else:
-        product_name = "unassigned"
-
-    # 2. Strip spaces and special characters for a clean filesystem name
-    clean_name = "".join([c for c in product_name if c.isalnum()]).lower()
-    random_name = uuid.uuid4()
+    # Separate the extension (e.g., '.jpg') from the original name
+    name, ext = os.path.splitext(filename)
     
-    # 3. Flattens path to avoid Windows directory creation collisions (FileExistsError)
-    return f'product-images/{clean_name}-{random_name}.jpg'
-
+    # 1. Clean the original name (removes spaces, symbols, uppercase)
+    # Example: "Galaxy S21 Ultra" becomes "galaxy-s21-ultra"
+    clean_name = slugify(name)
+    
+    # 2. Generate your 10-character secure random string
+    short_id = generate(size=10) 
+    
+    # 3. Return the compact, beautiful URL path
+    return f"product-images/{clean_name}-{short_id}{ext}"
 
 
 class ProductImage(TimeStamps, models.Model):
