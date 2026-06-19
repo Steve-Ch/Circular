@@ -20,6 +20,7 @@ from .models import (
     Review,OrderItem, Transaction,
     ProductImage, Category,RefundRequest,
     )
+from website.models import SiteConfiguration
 from .serializers import (
     ProductSerializer, 
     CartSerializer, 
@@ -255,6 +256,13 @@ class CheckoutView(generics.GenericAPIView):
         user = request.user
         cart = Cart.objects.get(user=user)
         cart_items = cart.items.select_related('product')
+        minimum_order = SiteConfiguration.objects.first().minimum_tx
+        subtotal = cart.subtotal
+        if subtotal < minimum_order:
+                return Response({
+                    "error": f"can't place order less that {minimum_order}."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
 
         # PRE-CHECK: Don't even start payment if stock is already gone
         # for item in cart_items:

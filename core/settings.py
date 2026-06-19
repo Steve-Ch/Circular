@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     #project apps
     'accounts',
     'products',
+    'website',
 
     #others
     'rest_framework',
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'drf_spectacular',
     'imagekit',
+    'solo',
 ]
 
 MIDDLEWARE = [

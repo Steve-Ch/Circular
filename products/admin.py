@@ -49,6 +49,22 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'categories_display', 'display', 'price', )
     list_filter = ('categories',)
     search_fields = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    
+    def get_fields(self, request, obj=None):
+        if obj:  # editing existing object
+            return (
+                'name', 'description', 'categories', 'price',
+                'display', 'created_at', 'updated_at',
+            )
+            
+        else:  # adding new object
+            return (
+                'name', 'description', 'categories', 'price',
+                'display',
+            )
+
 
 
 

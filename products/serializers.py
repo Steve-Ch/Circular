@@ -8,6 +8,7 @@ from .models import (
     )
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
+from website.models import SiteConfiguration
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -108,10 +109,14 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(read_only=True, many=True)
+    minimum_tx = serializers.SerializerMethodField()
     class Meta:
         model = Cart
-        fields = ['items', 'price_total',]
+        fields = ['items', 'subtotal', 'delivery_fee' , 'price_total', 'minimum_tx']
 
+    @extend_schema_field(serializers.FloatField)
+    def get_minimum_tx(self, obj):
+        return SiteConfiguration.objects.first().minimum_tx or 0.0
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

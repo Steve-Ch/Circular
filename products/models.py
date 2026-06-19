@@ -15,6 +15,9 @@ from accounts.models import Estate
 import os
 from django.utils.text import slugify
 from nanoid import generate
+from website.models import SiteConfiguration, DeliveryTier
+
+
 
 
 class TimeStamps(models.Model):
@@ -118,6 +121,9 @@ class Product(TimeStamps, models.Model):
 
     def __str__(self):
         return f"{self.name}"
+    
+    class Meta:
+        ordering = ["-created_at"]
 
 
 
@@ -208,24 +214,51 @@ class Transaction(TimeStamps, models.Model):
     
     def __str__(self):
         return self.reference
-
+ 
 
 
 
 class Cart(TimeStamps, models.Model):
-    user= models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
 
-    
+    @property
+    @extend_schema_field(Decimal)
+    def subtotal(self):
+        """Calculates total price of all items in the cart (excluding delivery)."""
+        return self.items.aggregate(
+            total=Sum(F('quantity') * F('product__price'))
+        )['total'] or Decimal('0.00')
+
+    @property
+    @extend_schema_field(Decimal)
+    def delivery_fee(self):
+        """Calculates the dynamic delivery fee based on the current subtotal."""
+        # Import inside the method if needed to prevent circular imports
+        from website.models import SiteConfiguration, DeliveryTier 
+        
+        order_total = self.subtotal
+        config = SiteConfiguration.get_solo()
+        
+        # Get the highest applicable tier matching the current subtotal
+        matching_tier = DeliveryTier.objects.filter(
+            min_order_value__lte=order_total
+        ).order_by('-min_order_value').first()
+        
+        if matching_tier:
+            return matching_tier.delivery_fee
+            
+        return config.default_delivery_fee
+
     @property
     @extend_schema_field(Decimal)
     def price_total(self):
-        return self.items.aggregate(
-            total=Sum(F('quantity') * F('product__price'))
-        )['total'] or 0
-    
+        """Calculates the final grand total (items + delivery fee)."""
+        return self.subtotal + self.delivery_fee
+
     def __str__(self):
         return f"{self.user.email}"
-        
+
+
 
 
 
