@@ -2,6 +2,22 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 from .models import User, Estate
+from django.utils.html import format_html
+from django.contrib.admin.models import LogEntry
+
+
+@admin.register(LogEntry)
+class LogEntryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'action_time', 'content_type', 'object_repr', 'action_flag', 'change_message', 'view_object_link')
+    list_filter = ('user', 'content_type', 'action_flag')
+    search_fields = ('object_repr', 'change_message')
+
+    def view_object_link(self, obj):
+        if obj.action_flag == 3:  # Deletion
+            return "(deleted)"
+        return format_html('<a href="{}">View</a>', obj.get_admin_url())
+    
+    view_object_link.short_description = "View Object"
 
 
 # admin.site.register(User)

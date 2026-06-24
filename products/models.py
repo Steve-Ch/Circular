@@ -46,7 +46,7 @@ class Category(models.Model):
 class Product(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=30)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True)
     categories = models.ManyToManyField(Category, related_name='projects', blank=False)
     price = models.DecimalField(decimal_places=2,max_digits=10)
     display = models.BooleanField(default=True,)
