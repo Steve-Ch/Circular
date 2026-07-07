@@ -11,13 +11,9 @@ from rest_framework.exceptions import ValidationError, PermissionDenied, NotFoun
 from drf_spectacular.utils import extend_schema
 from .utils import initiate_payment, paystack_verify, finalize_order
 from django.conf import settings
-import threading
-from django.db.models import Avg, Value
-from django.db.models.functions import Coalesce
-from django.db.models import Prefetch
 from .models import (
     Product, Cart,CartItem,Order,
-    Review,OrderItem, Transaction,
+    Review,Transaction, WishlistItem,
     ProductImage, Category,RefundRequest,
     )
 from website.models import SiteConfiguration
@@ -31,8 +27,12 @@ from .serializers import (
     CategorySerializer,
     ReviewSerializer,
     CancelOrderSerializer,
+    WishlistReadSerializer, 
+    WishlistWriteSerializer,
     ProductSearchSuggestionSerializer
     )
+from django.db import transaction
+
 # Create your views here.
 
 from django.db.models import OuterRef, Subquery
@@ -354,3 +354,72 @@ class CancelOrderView(generics.CreateAPIView):
 
         # 5. Pass the verified order object into the serializer's validated data
         serializer.save(order=order)
+
+
+
+
+
+class WishlistListCreateView(generics.ListCreateAPIView):
+    """Handles fetching user wishlist and adding new items."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WishlistWriteSerializer
+
+    def get_queryset(self):
+        return WishlistItem.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return WishlistReadSerializer
+        return WishlistWriteSerializer
+
+    def perform_create(self, serializer):
+        
+        serializer.save(user=self.request.user)
+
+
+class WishlistDestroyView(generics.DestroyAPIView):
+    """Handles removing a single item directly from the wishlist."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WishlistReadSerializer
+
+    def get_queryset(self):
+        return WishlistItem.objects.filter(user=self.request.user)
+
+
+class WishlistMoveToCartView(generics.GenericAPIView):
+    """Custom generic view to handle atomic transition from wishlist to cart."""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return WishlistItem.objects.filter(user=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        wishlist_item = self.get_object()
+        
+        try:
+            with transaction.atomic():
+                # 1. Add or update the product in the user's cart
+                cart, cart_created = Cart.objects.get_or_create(
+                    user=request.user,
+                )
+                cart_item, created = CartItem.objects.get_or_create(
+                    cart=cart,
+                    product=wishlist_item.product
+                )
+                
+                if not created:
+                    cart_item.quantity += 1
+                    cart_item.save()
+
+                # 2. Delete from wishlist safely inside the transaction block
+                wishlist_item.delete()
+
+            return Response(
+                {"detail": "Product successfully moved to cart."}, 
+                status=status.HTTP_200_OK
+            )
+        except Exception:
+            return Response(
+                {"detail": "Failed to complete the transfer operation."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )

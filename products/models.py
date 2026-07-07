@@ -45,9 +45,9 @@ class Category(models.Model):
 
 class Product(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=30)
+    name = models.CharField(max_length=60)
     description = models.TextField(null=True, blank=True)
-    categories = models.ManyToManyField(Category, related_name='projects', blank=False)
+    categories = models.ManyToManyField(Category, related_name='products', blank=False)
     price = models.DecimalField(decimal_places=2,max_digits=10)
     display = models.BooleanField(default=True,)
 
@@ -369,6 +369,36 @@ class OrderItem(models.Model):
     @property
     def image(self):
         return self.product.image_preview if self.product else None
+
+
+
+class WishlistItem(TimeStamps, models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="wishlist")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+
+    # @extend_schema_field(Decimal)
+    # @property
+    # def image(self):
+    #     return self.product.images.first().image.url
+    
+    @property
+    def image_preview(self):
+        return self.product.image_preview
+    
+    
+    @property
+    @extend_schema_field(Decimal)
+    def price(self):
+        return self.product.price
+    
+
+    def __str__(self):
+        return f"{self.product.name}"
+
+
+
+
 
 
 class RefundRequest(TimeStamps, models.Model):

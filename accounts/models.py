@@ -113,7 +113,7 @@ class User(AbstractUser):
     otp = models.CharField(max_length=6,null=True,blank=True)
     otp_expiry = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
-    address = models.CharField(max_length=30, blank=True, null=True)
+    address = models.CharField(max_length=120, blank=True, null=True)
     estate = models.ForeignKey(Estate, blank = True, null=True, on_delete=models.CASCADE)
 
 

@@ -111,7 +111,7 @@ class OrderItemInline(admin.StackedInline):
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     # list_display = ('user', 'email', 'phone_number', 'estate', 'status_with_emoji', 'price_total', 'created_at')
-    list_display = ('user', 'price_total','status','phone_number', 'email',  'estate', 'created_at')
+    list_display = ('user', 'price_total','status','phone_number', 'email',  'estate', 'created_at', 'address',)
     search_fields = ('full_name', 'items__product__name')
     list_filter = ('estate','status')
     fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total','rider']

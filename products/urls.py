@@ -1,20 +1,14 @@
 from django.urls import path
 from .views import (
-    ProductListAPIView,
-    ProductRetrieveAPIView,
-    OrderListAPIView,
-    OrderRetrieveAPIView,
-    CartRetrieveAPIView,
-    CartItemCreateAPIView,
-    CartItemUpdateDestroyAPIView,
-    CheckoutView,
-    paystack_webhook,
-    ReviewListAPIView,
-    ReviewDetailAPIView,
-    CategoryListAPIView,
-    CancelOrderView,
-    ClearCartAPIView,
-    ProductSearchSuggestionAPIView,
+    ProductListAPIView,ProductRetrieveAPIView,
+    OrderListAPIView,OrderRetrieveAPIView,
+    CartRetrieveAPIView,CartItemCreateAPIView,
+    CartItemUpdateDestroyAPIView,CheckoutView,
+    paystack_webhook,ReviewListAPIView,
+    ReviewDetailAPIView,CategoryListAPIView,
+    CancelOrderView,ClearCartAPIView,
+    ProductSearchSuggestionAPIView,WishlistListCreateView, 
+    WishlistDestroyView, WishlistMoveToCartView
 )
 
 
@@ -34,5 +28,9 @@ urlpatterns = [
     path('my-cart/clear/', ClearCartAPIView.as_view(), name='clear-cart'),
     path('paystack-verify/<str:key>', paystack_webhook.as_view()),
     path('my-orders/<uuid:order_id>/cancel/', CancelOrderView.as_view(), name='cancel-order'),
+    path('wishlist/', WishlistListCreateView.as_view(), name='wishlist-list-create'),
+    path('wishlist/<uuid:pk>/', WishlistDestroyView.as_view(), name='wishlist-delete'),
+    path('wishlist/<uuid:pk>/move-to-cart/', WishlistMoveToCartView.as_view(), name='wishlist-move-to-cart'),
+    
 ]
 

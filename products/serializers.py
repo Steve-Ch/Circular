@@ -4,7 +4,7 @@ from decimal import Decimal
 from .models import (
     Product, Cart,CartItem,Order,
     OrderItem,ProductImage,Review,
-    Category, RefundRequest
+    Category, RefundRequest, WishlistItem
     )
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
@@ -12,7 +12,7 @@ from website.models import SiteConfiguration
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
+    user = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = Review
@@ -167,3 +167,23 @@ class CancelOrderSerializer(serializers.ModelSerializer):
             paystack_reference=paystack_ref,
             **validated_data
         )
+
+
+
+
+class ProductMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'image']
+
+class WishlistReadSerializer(serializers.ModelSerializer):
+    product = ProductMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = WishlistItem
+        fields = ['id' ,'product', 'created_at']
+
+class WishlistWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WishlistItem
+        fields = ['product'] # User gets injected from request in views
