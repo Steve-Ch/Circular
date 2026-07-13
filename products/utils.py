@@ -4,6 +4,7 @@ import requests
 import requests
 from .models import Transaction, Cart, Order, OrderItem
 from django.db import transaction 
+from website.models import SiteConfiguration
 
 
 
@@ -53,8 +54,11 @@ from django.db import transaction
 
 
 def initiate_payment(amount, email, reference, callback_url):
+        key = settings.PAYSTACK_SECRET_KEY
+        if SiteConfiguration.get_solo().test_mode:
+            key = settings.PAYSTACK_SECRET_KEY_TEST
         headers = {
-            "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+            "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
 

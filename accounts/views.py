@@ -92,7 +92,7 @@ class UserConfirmPasswordResetView(generics.GenericAPIView):
             user.set_password(new_password)
             user.save()
             send_mail(
-                subject=f"Profiter Password Reset",
+                subject=f"Password Reset",
                 message=f"Your password has been reset sucessfully",
                 from_email=settings.EMAIL_HOST_USER,
                 recipient_list=[user.email],

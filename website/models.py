@@ -18,7 +18,10 @@ class SiteConfiguration(SingletonModel):
         help_text="Minimum amount for transaction, no order can be placed with amount less than this value."
     )
     closing_hour = models.TimeField(default=time(20, 0))
-
+    test_mode = models.BooleanField(
+        default=False,
+        help_text="Turning this on defaults to test paystack keys."
+        )
 
 
     def __str__(self):
