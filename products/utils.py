@@ -52,7 +52,7 @@ from django.db import transaction
 
 
 
-def initiate_payment(amount, email, reference):
+def initiate_payment(amount, email, reference, callback_url):
         headers = {
             "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
             "Content-Type": "application/json",
@@ -62,7 +62,7 @@ def initiate_payment(amount, email, reference):
             "email": email,
             "amount": int(amount * 100),
             "reference": reference,
-            "callback_url": settings.CALLBACK_URL,
+            "callback_url": callback_url,
         }
 
         response = requests.post(

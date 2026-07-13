@@ -116,9 +116,9 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': 'u4c',
+            'NAME': '',
             'USER': 'admin',
-            'PASSWORD': 'United4Change',
+            'PASSWORD': '',
             'HOST': 'localhost',
             'PORT': '',
         }
@@ -284,11 +284,11 @@ EMAIL_HOST = 'smtp.hostinger.com'
 EMAIL_PORT = 587  # Or 587 if you prefer STARTTLS
 EMAIL_USE_SSL = False  # Set to False if using port 587
 EMAIL_USE_TLS = True # Set to True if using port 587
-EMAIL_HOST_USER = 'contact@circular.estate' # Your full Hostinger email address
-EMAIL_HOST_PASSWORD = 'myTechnology123@' # The password you created for this mailbox
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 # DEFAULT_FROM_EMAIL = 'your-email@yourdomain.com'
-DEFAULT_FROM_EMAIL = 'mail@circular.estate'
+DEFAULT_FROM_EMAIL = config('DEBUG')
 
 
 
@@ -320,10 +320,13 @@ SIMPLE_JWT = {
 
 
 # Paystack Configuration
-PAYSTACK_SECRET_KEY = "sk_test_5d947c784a8128621c97b097c1aac95956044814"
-PAYSTACK_PUBLIC_KEY = "pk_test_7cee1859e12a60f0b5b6e0d5115045f7dc5fb353"
-PAYSTACK_BASE_URL = "https://api.paystack.co"
-CALLBACK_URL = "https://www.google.com" 
-SIGNATURE_KEY = "6n6vXm8PjL2kR9a"
-RESEND_SENDER_EMAIL = "mail@circular.estate"
-RESEND_API_KEY = "re_HrebRS4e_QG313ZZPgCowHN71H6d4N298"
+
+PAYSTACK_SECRET_KEY_TEST = config('PAYSTACK_SECRET_KEY_TEST')
+PAYSTACK_PUBLIC_KEY_TEST = config('PAYSTACK_PUBLIC_KEY_TEST')
+PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY')
+PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY')
+PAYSTACK_BASE_URL = config('PAYSTACK_BASE_URL')
+# CALLBACK_URL = "https://www.google.com" 
+SIGNATURE_KEY = config('SIGNATURE_KEY')
+RESEND_SENDER_EMAIL = config('RESEND_SENDER_EMAIL')
+RESEND_API_KEY = config('RESEND_API_KEY')

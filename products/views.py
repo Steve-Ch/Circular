@@ -245,13 +245,16 @@ class CheckoutView(generics.GenericAPIView):
     serializer_class = CheckoutResponseSerializer 
 
     @extend_schema(request=None)
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         
         # serializer = self.get_serializer(data=request.data)
         # serializer.is_valid(raise_exception=True)
         # data = serializer.validated_data
         # address_id = data.get('address_id')
         # address = user.addresses.filter(id = address_id)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         user = request.user
         cart = Cart.objects.get(user=user)
@@ -262,7 +265,7 @@ class CheckoutView(generics.GenericAPIView):
                 return Response({
                     "error": f"can't place order less that {minimum_order}."
                 }, status=status.HTTP_400_BAD_REQUEST)
-
+        callback_url = data.get('callback_url')
 
         # PRE-CHECK: Don't even start payment if stock is already gone
         # for item in cart_items:
@@ -285,7 +288,8 @@ class CheckoutView(generics.GenericAPIView):
         pay_res = initiate_payment(
             amount=cart.price_total, 
             email=user.email, 
-            reference=transaction_obj.reference
+            reference=transaction_obj.reference,
+            callback_url = callback_url
         )
 
         if pay_res.get('status'):

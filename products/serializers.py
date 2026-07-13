@@ -134,10 +134,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class CheckoutResponseSerializer(serializers.Serializer):
-    reference = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
-    status = serializers.CharField()
-    checkout_url = serializers.URLField()
+    reference = serializers.CharField(read_only=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
+    status = serializers.CharField(read_only=True)
+    checkout_url = serializers.URLField(read_only=True)
+    callback_url = serializers.CharField(required = True, write_only=True)
 
 
 class CancelOrderSerializer(serializers.ModelSerializer):
