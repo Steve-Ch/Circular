@@ -259,7 +259,7 @@ class CheckoutView(generics.GenericAPIView):
         user = request.user
         cart = Cart.objects.get(user=user)
         cart_items = cart.items.select_related('product')
-        minimum_order = SiteConfiguration.objects.first().minimum_tx
+        minimum_order = SiteConfiguration.get_solo().minimum_tx
         subtotal = cart.subtotal
         if subtotal < minimum_order:
                 return Response({
@@ -274,19 +274,22 @@ class CheckoutView(generics.GenericAPIView):
         #             "error": f"Only {item.product.quantity} units of {item.product.name} left."
         #         }, status=status.HTTP_400_BAD_REQUEST)
 
+        amount = cart.price_total
 
         address = request.user.address
         if not address:
-            raise PermissionDenied("Address not Found, for this user") 
+            raise PermissionDenied("Address not found") 
 
         transaction_obj = Transaction.objects.create(
             user=user, 
-            amount=cart.price_total, 
+            amount=amount, 
             status=Transaction.Status.PENDING
         )
 
+
+        
         pay_res = initiate_payment(
-            amount=cart.price_total, 
+            amount=amount, 
             email=user.email, 
             reference=transaction_obj.reference,
             callback_url = callback_url

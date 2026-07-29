@@ -22,6 +22,11 @@ class SiteConfiguration(SingletonModel):
         default=False,
         help_text="Turning this on defaults to test paystack keys."
         )
+    free_delivery = models.BooleanField(
+        default=False,
+        help_text="turning this on enables free dlivery for new users"
+        )
+
 
 
     def __str__(self):

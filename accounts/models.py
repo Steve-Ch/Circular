@@ -116,7 +116,6 @@ class User(AbstractUser):
     address = models.CharField(max_length=120, blank=True, null=True)
     estate = models.ForeignKey(Estate, blank = True, null=True, on_delete=models.CASCADE)
 
-
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 

@@ -19,7 +19,6 @@ from website.models import SiteConfiguration, DeliveryTier
 
 
 
-
 class TimeStamps(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,6 +48,7 @@ class Product(TimeStamps, models.Model):
     description = models.TextField(null=True, blank=True)
     categories = models.ManyToManyField(Category, related_name='products', blank=False)
     price = models.DecimalField(decimal_places=2,max_digits=10)
+    package = models.BooleanField(default=False)
     display = models.BooleanField(default=True,)
 
 
@@ -231,17 +231,32 @@ class Cart(TimeStamps, models.Model):
 
     @property
     @extend_schema_field(Decimal)
+    def package_subtotal(self):
+        """Calculates total price of all package items in the cart."""
+        return self.items.filter(product__package=True).aggregate(
+            total=Sum(F('quantity') * F('product__price'))
+        )['total'] or Decimal('0.00')
+
+    @property
+    @extend_schema_field(Decimal)
     def delivery_fee(self):
-        """Calculates the dynamic delivery fee based on the current subtotal."""
-        # Import inside the method if needed to prevent circular imports
-        from website.models import SiteConfiguration, DeliveryTier 
+        """Calculates the dynamic delivery fee based on the current subtotal excluding fees for package items."""
+        # 1. First check if the cart qualifies for absolute free delivery
+        if self.free_delivery:
+            return Decimal('0.00')
+            
+        # 2. Subtract package items from the tier calculation
+        non_package_total = self.subtotal - self.package_subtotal
         
-        order_total = self.subtotal
+        # 3. If the cart ONLY contains packages, delivery is free
+        if non_package_total <= Decimal('0.00'):
+            return Decimal('0.00')
+            
         config = SiteConfiguration.get_solo()
         
-        # Get the highest applicable tier matching the current subtotal
+        # 4. Get the highest applicable tier matching the non-package subtotal
         matching_tier = DeliveryTier.objects.filter(
-            min_order_value__lte=order_total
+            min_order_value__lte=non_package_total
         ).order_by('-min_order_value').first()
         
         if matching_tier:
@@ -255,9 +270,17 @@ class Cart(TimeStamps, models.Model):
         """Calculates the final grand total (items + delivery fee)."""
         return self.subtotal + self.delivery_fee
 
+    @property
+    @extend_schema_field(bool)
+    def free_delivery(self):
+        """Checks if the user qualifies for global free delivery rules."""
+        return (
+            SiteConfiguration.get_solo().free_delivery 
+            and not self.user.orders.filter(status=Order.Status.DELIVERED).exists()
+        )
+
     def __str__(self):
         return f"{self.user.email}"
-
 
 
 

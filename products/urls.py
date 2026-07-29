@@ -22,7 +22,7 @@ urlpatterns = [
     path('my-orders/', OrderListAPIView.as_view()),
     path('my-orders/<uuid:pk>/', OrderRetrieveAPIView.as_view()),
     path('my-cart/', CartRetrieveAPIView.as_view()),
-    path('my-cart/add/<uuid:product_id>', CartItemCreateAPIView.as_view()),
+    path('my-cart/add/<uuid:product_id>/', CartItemCreateAPIView.as_view()),
     path('my-cart/edit/<uuid:pk>/', CartItemUpdateDestroyAPIView.as_view()),
     path('my-cart/checkout/', CheckoutView.as_view()),
     path('my-cart/clear/', ClearCartAPIView.as_view(), name='clear-cart'),

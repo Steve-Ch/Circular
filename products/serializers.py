@@ -48,7 +48,7 @@ class ProductSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'categories_display', 'price', 'average_rating', 'images']
+        fields = ['id', 'name', 'package' , 'description', 'categories_display', 'price', 'average_rating', 'images']
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_categories_display(self, obj):
@@ -116,7 +116,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.FloatField)
     def get_minimum_tx(self, obj):
-        return SiteConfiguration.objects.first().minimum_tx or 0.0
+        return SiteConfiguration.get_solo().minimum_tx or 0.0
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
