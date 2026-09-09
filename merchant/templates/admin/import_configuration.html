@@ -1,0 +1,322 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+    /* Fix Jazzmin/AdminLTE CSS overrides on modal close button */
+    #confirmOverwriteModal .modal-content {
+        position: relative;
+        border-radius: 8px;
+    }
+
+    #confirmOverwriteModal .close-x-btn {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        background: transparent !important;
+        border: none !important;
+        font-size: 1.5rem;
+        font-weight: 300;
+        line-height: 1;
+        color: #888;
+        cursor: pointer;
+        padding: 4px;
+        outline: none !important;
+        box-shadow: none !important;
+        transition: color 0.2s ease-in-out;
+        z-index: 10;
+    }
+
+    #confirmOverwriteModal .close-x-btn:hover {
+        color: #212529 !important;
+    }
+
+    /* Custom Radio Box Styling for better UX */
+    .import-option-box {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .import-option-box.active-box {
+        border-color: #007bff;
+        background-color: #f8fbff;
+    }
+
+    /* --- NEW PILL CHECKBOX STYLING --- */
+    .category-pills-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+        margin-bottom: 10px;
+    }
+    .category-pill-wrapper {
+        margin: 0;
+        cursor: pointer;
+    }
+    .category-pill-wrapper input[type="checkbox"] {
+        display: none; /* Visually hide the default checkbox */
+    }
+    .category-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 18px;
+        border: 1px solid #adb5bd;
+        border-radius: 50px;
+        background-color: #ffffff;
+        color: #495057;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    
+    /* Hover state */
+    .category-pill-wrapper:hover .category-pill {
+        background-color: #f8f9fa;
+        border-color: #6c757d;
+    }
+
+    /* Active/Checked state */
+    .category-pill-wrapper input[type="checkbox"]:checked + .category-pill {
+        background-color: #e0e7ff; 
+        border-color: #6366f1;
+        color: #4338ca;
+    }
+    
+    .pill-icon {
+        display: none;
+        margin-right: 6px;
+        font-size: 0.85rem;
+    }
+    
+    /* Show checkmark only when selected */
+    .category-pill-wrapper input[type="checkbox"]:checked + .category-pill .pill-icon {
+        display: inline-block;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-9 col-sm-12">
+            <div class="card card-primary card-outline shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-cogs mr-2"></i> Inventory Import & Price Configuration</h3>
+                </div>
+                
+                <form id="importConfigForm" action="" method="post">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        
+                        <h4 class="text-primary mt-2"><i class="fas fa-download mr-1"></i> 1. What products do you want to import?</h4>
+                        <p class="text-muted text-sm mb-4">Select how you want to pull missing products from the global catalog into your inventory.</p>
+                        
+                        <!-- Option 1: Import All Except -->
+                        <label class="import-option-box d-block" id="box_all_except">
+                            <div class="form-check">
+                                <input class="form-check-input import-radio" type="radio" name="import_type" id="id_import_type_0" value="all_except" {% if form.import_type.value == 'all_except' %}checked{% endif %}>
+                                <span class="font-weight-bold h6 d-block mb-1">Import Everything (Recommended)</span>
+                                <small class="text-muted">Pulls in every product from the catalog. You can choose to skip specific categories below.</small>
+                            </div>
+                            
+                            <div class="mt-3 pl-4" id="excluded_categories_wrapper">
+                                <label class="text-danger"><i class="fas fa-ban mr-1"></i> Categories to SKIP (Exclude):</label>
+                                
+                                <!-- Friendly Contextual Message -->
+                                {% if merchant.category %}
+                                <div class="alert alert-info py-2 px-3 mb-2 text-sm">
+                                    <i class="fas fa-info-circle mr-1"></i> Because your store is set up as a <strong>{{ merchant.category.name }}</strong>, we have automatically selected some unrelated categories below to keep your inventory clean. You can click to select/deselect them.
+                                </div>
+                                {% else %}
+                                <p class="text-sm text-muted mb-1">Products in these categories will <strong>NOT</strong> be imported. Click to select/deselect a category.</p>
+                                {% endif %}
+
+                                <!-- PILL RENDERER FOR EXCLUDED CATEGORIES -->
+                                <div class="category-pills-container">
+                                    {% for checkbox in form.excluded_categories %}
+                                        <label class="category-pill-wrapper">
+                                            {{ checkbox.tag }}
+                                            <span class="category-pill">
+                                                <i class="fas fa-check pill-icon"></i>
+                                                {{ checkbox.choice_label }}
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Option 2: Import Specific -->
+                        <label class="import-option-box d-block" id="box_specific">
+                            <div class="form-check">
+                                <input class="form-check-input import-radio" type="radio" name="import_type" id="id_import_type_1" value="specific" {% if form.import_type.value == 'specific' %}checked{% endif %}>
+                                <span class="font-weight-bold h6 d-block mb-1">Import Only Specific Categories</span>
+                                <small class="text-muted">Only pulls in products from the exact categories you select.</small>
+                            </div>
+                            
+                            <div class="mt-3 pl-4" id="included_categories_wrapper" style="display: none;">
+                                <label class="text-success"><i class="fas fa-check mr-1"></i> Categories to INCLUDE:</label>
+                                <p class="text-sm text-muted mb-1">Select the categories you want to import.</p>
+                                
+                                <!-- PILL RENDERER FOR INCLUDED CATEGORIES -->
+                                <div class="category-pills-container">
+                                    {% for checkbox in form.included_categories %}
+                                        <label class="category-pill-wrapper">
+                                            {{ checkbox.tag }}
+                                            <span class="category-pill">
+                                                <i class="fas fa-check pill-icon"></i>
+                                                {{ checkbox.choice_label }}
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+
+                                {% if form.included_categories.errors %}
+                                    <small class="text-danger mt-1 d-block">{{ form.included_categories.errors }}</small>
+                                {% endif %}
+                            </div>
+                        </label>
+
+                        <div class="form-check mt-4 mb-4 bg-light p-3 border rounded">
+                            {{ form.import_with_price }}
+                            <label class="form-check-label font-weight-bold text-success ml-1" for="{{ form.import_with_price.id_for_label }}">
+                                {{ form.import_with_price.label }}
+                            </label>
+                        </div>
+
+                        <hr>
+
+                        <h4 class="text-primary mt-4"><i class="fas fa-tags mr-1"></i> 2. Update your Existing Inventory</h4>
+                        <p class="text-muted text-sm">Use these optional tools to automatically fix prices for products you already sell.</p>
+                        
+                        <div class="form-check mb-3 p-2">
+                            {{ form.update_unpriced }}
+                            <label class="form-check-label font-weight-bold ml-1" for="{{ form.update_unpriced.id_for_label }}">
+                                {{ form.update_unpriced.label }}
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3 p-3 bg-light border rounded">
+                            {{ form.overwrite_all_prices }}
+                            <label class="form-check-label font-weight-bold ml-1" for="{{ form.overwrite_all_prices.id_for_label }}">
+                                {{ form.overwrite_all_prices.label }}
+                            </label>
+                        </div>
+
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-play mr-1"></i> Run Action(s)
+                        </button>
+                        <a href="../" class="btn btn-default float-right">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Confirmation Modal -->
+<div class="modal fade" id="confirmOverwriteModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content shadow border-0">
+            
+            <button type="button" class="close-x-btn" id="closeModalBtnX" aria-label="Close">
+                &times;
+            </button>
+
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title font-weight-bold" id="modalLabel">Confirm Price Update</h5>
+            </div>
+            
+            <div class="modal-body text-center pt-2 pb-4 px-4">
+                <i class="fas fa-exclamation-circle text-warning fa-3x mb-3"></i>
+                <p class="mb-2" style="font-size: 1.1rem;">You are about to update <strong>all</strong> your inventory prices.</p>
+                <p class="text-muted mb-0">This will change every item in your store to match the Global Catalog. Any manual prices you've previously set will be replaced.</p>
+            </div>
+            
+            <div class="modal-footer bg-light border-top-0 justify-content-center">
+                <button type="button" class="btn btn-default px-4 mr-2" id="closeModalBtnCancel">Cancel</button>
+                <button type="button" id="confirmSubmitBtn" class="btn btn-primary px-4">Proceed with Update</button>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- Initialize Select2 for the multiple choice fields -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init Select2
+        if($.fn.select2) {
+            $('.select2').select2({
+                placeholder: "Click to select categories...",
+                allowClear: true
+            });
+        }
+
+        const importTypeRadios = document.querySelectorAll('.import-radio');
+        const excludedWrapper = document.getElementById('excluded_categories_wrapper');
+        const includedWrapper = document.getElementById('included_categories_wrapper');
+        const boxAllExcept = document.getElementById('box_all_except');
+        const boxSpecific = document.getElementById('box_specific');
+        const form = document.getElementById('importConfigForm');
+        const overwriteCheckbox = document.getElementById('{{ form.overwrite_all_prices.id_for_label }}');
+        
+        // Modal elements
+        const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+        const modalEl = $('#confirmOverwriteModal');
+        const btnCancel = document.getElementById('closeModalBtnCancel');
+        const btnX = document.getElementById('closeModalBtnX');
+
+        let forceSubmit = false;
+
+        // Toggle visibility and active styles based on radio selection
+        function toggleCategoryFields() {
+            const selected = document.querySelector('.import-radio:checked').value;
+            
+            if (selected === 'all_except') {
+                excludedWrapper.style.display = 'block';
+                includedWrapper.style.display = 'none';
+                boxAllExcept.classList.add('active-box');
+                boxSpecific.classList.remove('active-box');
+            } else {
+                excludedWrapper.style.display = 'none';
+                includedWrapper.style.display = 'block';
+                boxSpecific.classList.add('active-box');
+                boxAllExcept.classList.remove('active-box');
+            }
+        }
+
+        importTypeRadios.forEach(radio => {
+            radio.addEventListener('change', toggleCategoryFields);
+        });
+        toggleCategoryFields();
+
+        // Intercept form submission to show the modal
+        form.addEventListener('submit', function(e) {
+            if (overwriteCheckbox && overwriteCheckbox.checked && !forceSubmit) {
+                e.preventDefault();
+                modalEl.modal('show');
+            }
+        });
+
+        // Trigger form submit when user confirms
+        confirmSubmitBtn.addEventListener('click', function() {
+            forceSubmit = true;
+            modalEl.modal('hide');
+            form.submit();
+        });
+
+        // Close logic for X and Cancel buttons
+        btnCancel.addEventListener('click', function() { modalEl.modal('hide'); });
+        btnX.addEventListener('click', function() { modalEl.modal('hide'); });
+    });
+</script>
+{% endblock %}

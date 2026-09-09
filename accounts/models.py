@@ -16,8 +16,8 @@ class Estate(models.Model):
     address = models.TextField()
     state = models.CharField(max_length=100)
     town = models.CharField(max_length=100)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    latitude = models.DecimalField(max_digits=12, decimal_places=6)
+    longitude = models.DecimalField(max_digits=12, decimal_places=6)
     image = ProcessedImageField(
         upload_to='estates',
         processors=[ResizeToFit(1024, 1024)],
@@ -25,6 +25,10 @@ class Estate(models.Model):
         options={'quality': 75},
         blank=True,null=True
     )
+    main_merchants = models.ManyToManyField('merchant.Merchant', related_name='main_estates', blank=True)
+    backup_merchants = models.ManyToManyField('merchant.Merchant', related_name='backup_estates', blank=True)
+
+
 
     def image_preview(self):
         if self.image:
@@ -99,7 +103,7 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
-    phone_number = PhoneNumberField(unique=True, null=False, blank=False)
+    phone_number = PhoneNumberField(null=False, blank=False)
     avatar = ProcessedImageField(
             upload_to='avatars/',
             processors=[ResizeToFit(1024, 1024)],
@@ -114,8 +118,12 @@ class User(AbstractUser):
     otp_expiry = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     address = models.CharField(max_length=120, blank=True, null=True)
-    estate = models.ForeignKey(Estate, blank = True, null=True, on_delete=models.CASCADE)
-
+    estate = models.ForeignKey(Estate, blank = True, null=True, on_delete=models.SET_NULL, related_name= "users")
+    eligible_for_free_delivery = models.BooleanField(
+        default=True,
+        help_text="Uncheck this to manually revoke this user's free delivery privilege."
+    )
+    
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -127,6 +135,13 @@ class User(AbstractUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def all_groups(self):
+        return [group.name for group in self.groups.all()]
+
+    class Meta:
+            ordering = ["-date_joined"]
     
 
 # class Address(TimeStamps, models.Model):

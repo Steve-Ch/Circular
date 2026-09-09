@@ -12,6 +12,8 @@ from accounts.utils import generate_otp, validate_otp,send_html_mail
 from django.utils import timezone
 from datetime import timedelta
 from django.utils.html import format_html
+from merchant.utils import get_user_merchant
+
 # Register your models here.
 
 admin.site.register(Review)
@@ -46,24 +48,80 @@ class ProductImageInline(admin.StackedInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
-    list_display = ('name', 'categories_display', 'display', 'price','created_at', )
+    list_display = ('name', 'categories_display', 'display', 'price','created_at', 'created_by_merchant' )
     list_filter = ('categories',)
     search_fields = ('name',)
-    readonly_fields = ('created_at', 'updated_at')
+    # readonly_fields = ('created_at', 'updated_at', 'created_by_merchant')
 
-    
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # When the autocomplete AJAX request hits this admin, 
+        # it will filter out the restricted items for merchants.
+        if not request.user.is_superuser:
+            qs = qs.filter(package=False, display=True)
+        return qs
+
+
     def get_fields(self, request, obj=None):
+        # Base fields for editing vs adding
         if obj:  # editing existing object
-            return (
+            fields = [
                 'name', 'description', 'categories', 'price',
-                'display', 'created_at', 'updated_at',
-            )
-            
+                'display', 'created_at', 'updated_at', 'package', 'created_by_merchant'
+            ]
         else:  # adding new object
-            return (
+            fields = [
                 'name', 'description', 'categories', 'price',
-                'display',
+                'display', 'package',
+            ]
+            
+        # Hide the package field from non-superusers (merchant staff)
+        if not request.user.is_superuser:
+            if 'package' in fields:
+                fields.remove('package')
+                fields.remove('created_by_merchant')
+                
+        return tuple(fields)
+
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing an existing object
+            return (
+                'created_at', 'updated_at', 'created_by_merchant', 'package'
             )
+        else:  # Adding a new object
+            return (
+                'created_at', 'updated_at', 'created_by_merchant',
+            )
+
+
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return False # Keeps global product list hidden from sidebar
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+            
+        if obj is not None:
+            merchant = get_user_merchant(request.user)
+            # Row-level check: Can only edit if this merchant created the product
+            if merchant and obj.created_by_merchant == merchant:
+                return True
+            return False # Blocked if created by another merchant
+            
+        return True
+
+    def save_model(self, request, obj, form, change):
+        # Automatically tag the product with the logged-in merchant during creation popup
+        if not change:
+            merchant = get_user_merchant(request.user)
+            if merchant:
+                obj.created_by_merchant = merchant
+        super().save_model(request, obj, form, change)
 
 
 
@@ -71,8 +129,8 @@ class ProductAdmin(admin.ModelAdmin):
 class CartItemInline(admin.StackedInline):
     model = CartItem
     extra = 0  # Set this to 0 to remove empty placeholder rows
-    fields = ['product', 'quantity','price','sub_total', 'image_preview']
-    readonly_fields = ('product', 'price', 'quantity', 'price','sub_total', 'image_preview')
+    fields = ['merchant_product', 'quantity','price','sub_total', 'image_preview']
+    readonly_fields = ('merchant_product', 'price', 'quantity', 'price','sub_total', 'image_preview')
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -94,8 +152,8 @@ class CartAdmin(admin.ModelAdmin):
 class OrderItemInline(admin.StackedInline):
     model = OrderItem
     extra = 0  # Set this to 0 to remove empty placeholder rows
-    fields = ['product', 'price_at_purchase', 'quantity', 'sub_total', 'image']
-    readonly_fields = ('product', 'price_at_purchase', 'quantity', 'sub_total', 'image')
+    fields = ['merchant_product', 'price_at_purchase', 'quantity', 'sub_total', 'image_preview']
+    readonly_fields = ('merchant_product', 'price_at_purchase', 'quantity', 'sub_total', 'image_preview')
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -112,7 +170,7 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     # list_display = ('user', 'email', 'phone_number', 'estate', 'status_with_emoji', 'price_total', 'created_at')
     list_display = ('user', 'price_total','status','phone_number', 'email',  'estate', 'created_at', 'address',)
-    search_fields = ('full_name', 'items__product__name')
+    search_fields = ('full_name', 'items__merchant_product__product__name')
     list_filter = ('estate','status')
     fields = ['user', 'estate', 'address', 'transaction', 'status','phone_number', 'created_at','price_total','rider']
     readonly_fields = ('full_name','user', 'email', 'phone_number', 'estate', 'address', 'transaction', 'created_at','price_total', 'rider')

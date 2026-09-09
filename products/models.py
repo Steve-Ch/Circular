@@ -16,7 +16,7 @@ import os
 from django.utils.text import slugify
 from nanoid import generate
 from website.models import SiteConfiguration, DeliveryTier
-
+# from guardian.shortcuts import assign_perm
 
 
 class TimeStamps(models.Model):
@@ -44,33 +44,25 @@ class Category(models.Model):
 
 class Product(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=60)
+    name = models.CharField(max_length=150, unique=True)
     description = models.TextField(null=True, blank=True)
     categories = models.ManyToManyField(Category, related_name='products', blank=False)
     price = models.DecimalField(decimal_places=2,max_digits=10)
     package = models.BooleanField(default=False)
     display = models.BooleanField(default=True,)
+    # Track which merchant created the product globally
+    created_by_merchant = models.ForeignKey("merchant.Merchant", on_delete=models.SET_NULL, null=True, blank=True)
 
+    def save(self, *xargs, **kwargs):
+            if self.name:
+                self.name = self.name.title()
+            super().save(*xargs, **kwargs)
 
-    def save(self, *args, **kwargs):
-        # 1. Check if this is an update to an existing product
-        if self.pk:
-            old_instance = Product.objects.filter(pk=self.pk).first()
-            
-            # 2. Trigger deletion only if 'display' was True and is changing to False
-            if old_instance and old_instance.display and not self.display:
-                # Efficiently bulk delete matching items from all user carts
-                CartItem.objects.filter(product=self).delete()
-
-        # 3. Proceed with the normal save operation
-        super().save(*args, **kwargs)
     
-
-
     @property
     def image(self):
         # Added a safe check using .first() to prevent AttributeError if no images exist
-        first_image_obj = self.images.first()
+        first_image_obj = self.images.order_by('created_at').first()
         if first_image_obj and first_image_obj.image:
             return first_image_obj.image.url
         return None
@@ -168,7 +160,8 @@ class ProductImage(TimeStamps, models.Model):
         ordering = ["-created_at"]
 
 class Review(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    # product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    merchant_product = models.ForeignKey('merchant.MerchantProduct', on_delete=models.CASCADE, related_name='reviews',blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True, null=True)
@@ -176,11 +169,11 @@ class Review(models.Model):
 
     class Meta:
         # Prevents multiple reviews from the same user for one product
-        unique_together = ('product', 'user') 
+        unique_together = ('merchant_product', 'user') 
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.name} ({self.rating}*)"
+        return f"{self.user.username} - {self.merchant_product.product.name} ({self.rating}*)"
 
 
 
@@ -192,12 +185,17 @@ class Transaction(TimeStamps, models.Model):
         PENDING = "PENDING", "Pending"
         SUCCESSFUL = "SUCCESSFUL", "Successful"
         FAILED = "FAILED", "Failed"
-    
-    reference = models.CharField(max_length=20, unique=True)
+
+    class Type(models.TextChoices):
+        ORDER = "ORDER", "Order"
+        SERVICE = "SERVICE", "Service"
+
+
+    reference = models.CharField(max_length=30, unique=True)
     user = models.ForeignKey(User, related_name='transactions', on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
-
+    status = models.CharField(max_length=30,choices=Status.choices, default=Status.PENDING)
+    payment_type = models.CharField(max_length=30,choices=Status.choices, default=Type.ORDER)
 
     def save(self, *args, **kwargs):
         if not self.reference: 
@@ -220,21 +218,29 @@ class Transaction(TimeStamps, models.Model):
 
 class Cart(TimeStamps, models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
-
+    # free_delivery = models.BooleanField(default=True)
     @property
     @extend_schema_field(Decimal)
     def subtotal(self):
-        """Calculates total price of all items in the cart (excluding delivery)."""
-        return self.items.aggregate(
-            total=Sum(F('quantity') * F('product__price'))
+        # Added .filter() to enforce display rules during calculations
+        valid_items = self.items.filter(
+            merchant_product__display=True, 
+            merchant_product__product__display=True
+        )
+        return valid_items.aggregate(
+            total=Sum(F('quantity') * F('merchant_product__price'))
         )['total'] or Decimal('0.00')
 
     @property
     @extend_schema_field(Decimal)
     def package_subtotal(self):
-        """Calculates total price of all package items in the cart."""
-        return self.items.filter(product__package=True).aggregate(
-            total=Sum(F('quantity') * F('product__price'))
+        valid_package_items = self.items.filter(
+            merchant_product__display=True, 
+            merchant_product__product__display=True,
+            merchant_product__product__package=True
+        )
+        return valid_package_items.aggregate(
+            total=Sum(F('quantity') * F('merchant_product__price'))
         )['total'] or Decimal('0.00')
 
     @property
@@ -274,10 +280,8 @@ class Cart(TimeStamps, models.Model):
     @extend_schema_field(bool)
     def free_delivery(self):
         """Checks if the user qualifies for global free delivery rules."""
-        return (
-            SiteConfiguration.get_solo().free_delivery 
-            and not self.user.orders.filter(status=Order.Status.DELIVERED).exists()
-        )
+        config = SiteConfiguration.get_solo()
+        return config.free_delivery and self.user.eligible_for_free_delivery
 
     def __str__(self):
         return f"{self.user.email}"
@@ -288,7 +292,7 @@ class Cart(TimeStamps, models.Model):
 class CartItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)    
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    merchant_product = models.ForeignKey('merchant.MerchantProduct', on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField(
         default=1,
         validators=[
@@ -300,31 +304,31 @@ class CartItem(models.Model):
     # @extend_schema_field(Decimal)
     @property
     def image(self):
-        return self.product.images.first().image.url
+        return self.merchant_product.product.images.first().image.url
     
     @property
     def image_preview(self):
-        return self.product.image_preview
+        return self.merchant_product.product.image_preview
     
     
 
     @property
     @extend_schema_field(Decimal)
     def price(self):
-        return self.product.price
+        return self.merchant_product.price
     
     @property
     @extend_schema_field(Decimal)
     def sub_total(self):
-        return self.quantity * self.product.price
+        return self.quantity * self.merchant_product.price
 
     def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
+        return f"{self.merchant_product__product.name} x {self.quantity}"
 
 
 
 
-class Order(TimeStamps, models.Model):
+class  Order(TimeStamps, models.Model):
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
@@ -333,14 +337,14 @@ class Order(TimeStamps, models.Model):
         CANCELLED = "CANCELLED", "Cancelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user =  models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    address = models.CharField(max_length=50)
+    user =  models.ForeignKey(User, on_delete=models.SET_NULL, related_name='orders', null=True, blank=True)
+    address = models.CharField(max_length=80)
     estate = models.ForeignKey(Estate, on_delete=models.SET_NULL, related_name='orders', null=True, blank=True)
     transaction = models.ForeignKey(Transaction, on_delete=models.SET_NULL, related_name='orders', null=True, blank=True)
-    status = models.CharField(max_length=20,choices=Status.choices, default=Status.PENDING)
-    full_name = models.CharField(max_length=30)
+    status = models.CharField(max_length=50,choices=Status.choices, default=Status.PENDING)
+    full_name = models.CharField(max_length=150)
     email = models.EmailField()
-    rider = models.CharField(max_length=25, null=True, blank=True)
+    rider = models.CharField(max_length=150, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.email} | {self.full_name}"
@@ -367,7 +371,7 @@ class Order(TimeStamps, models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     # 1. Allow the link to be NULL when product is deleted
-    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    merchant_product = models.ForeignKey('merchant.MerchantProduct', on_delete=models.SET_NULL, null=True, blank=True)
 
     product_name = models.CharField(max_length=255, null=True, blank=True)
     quantity = models.PositiveIntegerField(
@@ -390,20 +394,19 @@ class OrderItem(models.Model):
         return 0
     
     @property
-    def image(self):
-        return self.product.image_preview if self.product else None
+    def image_preview(self):
+        return self.merchant_product.product.image_preview if self.merchant_product.product else None
 
+    @property
+    def image(self):
+        return self.merchant_product.product.image
 
 
 class WishlistItem(TimeStamps, models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="wishlist")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    merchant_product = models.ForeignKey('merchant.MerchantProduct', on_delete=models.CASCADE,blank=True, null=True)
 
-    # @extend_schema_field(Decimal)
-    # @property
-    # def image(self):
-    #     return self.product.images.first().image.url
     
     @property
     def image_preview(self):
@@ -413,11 +416,13 @@ class WishlistItem(TimeStamps, models.Model):
     @property
     @extend_schema_field(Decimal)
     def price(self):
-        return self.product.price
+        return self.merchant_product.product.price
     
 
     def __str__(self):
-        return f"{self.product.name}"
+        if self.merchant_product and self.merchant_product.product:
+            return f"{self.merchant_product.product.name}"
+        return f"Wishlist Item ({self.id})"
 
 
 
@@ -436,8 +441,8 @@ class RefundRequest(TimeStamps, models.Model):
         PENDING = 'PENDING', 'Pending'
         REFUNDED = 'REFUNDED', 'Refunded'
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.PENDING)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=STATUS_CHOICES.PENDING)
     order = models.OneToOneField(Order, on_delete=models.CASCADE)
     paystack_reference = models.CharField(max_length=100, null=True, blank=True)
-    cancellation_reason = models.CharField(max_length=20, choices=CANCELLATION_REASONS.choices, default=CANCELLATION_REASONS.OTHER)
+    cancellation_reason = models.CharField(max_length=30, choices=CANCELLATION_REASONS.choices, default=CANCELLATION_REASONS.OTHER)
     cancellation_note = models.TextField(null=True, blank=True)

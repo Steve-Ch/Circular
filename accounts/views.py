@@ -15,11 +15,78 @@ from .serializers import (
     UserConfirmPasswordResetSerializer,
     UserUpdateSerializer,
     EstateSerializer,
+    GoogleAuthSerializer, AppleAuthSerializer
     )
 from.utils import validate_otp, generate_otp, send_reset_password_otp,send_mail
 from .models import Estate
 from rest_framework.views import APIView
-# Create your views here.
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+
+
+class AppleSignInView(APIView):
+    permission_classes = [] 
+
+    def post(self, request, *args, **kwargs):
+        serializer = AppleAuthSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "is_active": user.is_active,
+                "user_id": user.id,
+                "email": user.email,
+                "full_name": user.full_name
+            }, status=status.HTTP_200_OK)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+class GoogleSignInView(APIView):
+    permission_classes = [] # Allow unauthenticated users to hit this endpoint
+
+    def post(self, request, *args, **kwargs):
+        serializer = GoogleAuthSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "is_active": user.is_active,
+                "email": user.email,
+                "full_name": user.full_name
+            }, status=status.HTTP_200_OK)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -32,8 +99,18 @@ class RegisterationView(generics.GenericAPIView):
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({'message': "Registration successful. Please check your email for the OTP to verify your account."}, status= status.HTTP_201_CREATED)
+        user = serializer.save()
+
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "is_active": user.is_active,
+            "email": user.email,
+            "full_name": user.full_name
+        }, status.HTTP_201_CREATED)
+
 
 
 class AccountActivationView(generics.GenericAPIView):

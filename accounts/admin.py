@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from .models import User, Estate
 from django.utils.html import format_html
 from django.contrib.admin.models import LogEntry
-
+from services.models import EstateService
 
 @admin.register(LogEntry)
 class LogEntryAdmin(admin.ModelAdmin):
@@ -20,6 +20,24 @@ class LogEntryAdmin(admin.ModelAdmin):
     view_object_link.short_description = "View Object"
 
 
+
+# 1. Create an inline using the auto-generated intermediate table
+# class MerchantEstateInline(admin.TabularInline):
+#     # This targets the hidden 'through' table connecting both models
+#     model = Merchant.estate.through 
+#     extra = 1
+    
+#     # 2. Use autocomplete_fields to easily search existing merchants
+#     autocomplete_fields = ['merchant'] 
+
+
+class ServiceImageInline(admin.StackedInline):
+    model = EstateService
+    extra = 0
+    
+
+
+
 # admin.site.register(User)
 @admin.register(Estate)
 class EstateAdmin(admin.ModelAdmin):
@@ -28,13 +46,13 @@ class EstateAdmin(admin.ModelAdmin):
     list_filter = ('state','town')
     ordering = ['state', 'town', 'name']
     readonly_fields = ('image_preview',)
-
+    inlines = [ServiceImageInline]
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     model = User
     ordering = ('email',)
-    list_display = ( 'email', 'full_name', 'phone_number', 'is_active', 'is_staff')
+    list_display = ( 'email', 'full_name', 'phone_number', 'is_active', 'is_staff', 'date_joined', 'all_groups')
     search_fields = ('email',)
     # readonly_fields = (
     #     'first_name', 'last_name', 'phone_number', 
@@ -48,7 +66,7 @@ class CustomUserAdmin(UserAdmin):
     # 1. Fixed Fieldsets (for editing existing users)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'phone_number', 'estate', 'address')}),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'phone_number', 'estate', 'address', 'eligible_for_free_delivery')}),
         (_('Permissions'), {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),

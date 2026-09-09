@@ -10,10 +10,12 @@ from .views import (
     ProductSearchSuggestionAPIView,WishlistListCreateView, 
     WishlistDestroyView, WishlistMoveToCartView
 )
+from merchant.views import MerchantListAPIView
 
 
 urlpatterns = [
     path('products/', ProductListAPIView.as_view()),
+    path('merchants/', MerchantListAPIView.as_view()),
     path('products/suggestions/', ProductSearchSuggestionAPIView.as_view()),
     path('products/<uuid:pk>/', ProductRetrieveAPIView.as_view()),
     path('products/<uuid:pk>/reviews/', ReviewListAPIView.as_view()),

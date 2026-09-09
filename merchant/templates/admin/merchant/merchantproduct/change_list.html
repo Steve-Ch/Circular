@@ -1,0 +1,170 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    <!-- 1. Keep native "Add My Product Inventory" button styling -->
+    {{ block.super }}
+    
+
+    <!-- 3. Category Bulk Import Action Button -->
+    <li style="list-style-type: none; display: inline-block;">
+        <a href="import-configuration/" class="btn btn-sm btn-success font-weight-bold mx-1 text-white custom-jazmin-btn">
+            <i class="fas fa-folder-open mr-1"></i> Import & Price Config
+        </a>
+    </li>
+
+
+    <!-- 4. Dynamic Edit Mode Toggle Link -->
+    <li style="list-style-type: none; display: inline-block;">
+        {% if is_editing %}
+            <a href="#" id="toggle-edit-btn" class="btn btn-sm btn-danger font-weight-bold mx-1 text-white custom-jazmin-btn">
+                <i class="fas fa-lock mr-1"></i> Exit Editing Mode
+            </a>
+        {% else %}
+            <a href="#" id="toggle-edit-btn" class="btn btn-sm btn-success font-weight-bold mx-1 text-white custom-jazmin-btn">
+                <i class="fas fa-edit mr-1"></i> Edit Items Here
+            </a>
+        {% endif %}
+    </li>
+
+    <!-- --- JAZMIN ADAPTIVE FLOATING POPUP UI --- -->
+    <div class="custom-modal-overlay" id="custom-import-modal">
+        <div class="card card-warning card-outline custom-modal-box shadow-lg mb-0 p-0" style="border-top: 3px solid #ffc107 !important;">
+            
+            <!-- Styled Window Header Container -->
+            <div class="card-header d-flex align-items-center justify-content-between p-3" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; position: relative;">
+                <h5 class="card-title font-weight-bold text-dark mb-0 d-flex align-items-center" style="font-size: 1.1rem; gap: 8px;">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Bulk Import Confirmation
+                </h5>
+                
+                <!-- Windows-Style Red Corner Close Button Container -->
+                <button type="button" class="btn btn-sm btn-danger close-custom-modal d-flex align-items-center justify-content-center" 
+                        style="position: absolute; top: 0; right: 0; height: 100%; width: 45px; border-radius: 0 4px 0 0; border: none; padding: 0; outline: none; transition: background 0.2s;">
+                    <i class="fas fa-times text-white" style="font-size: 1rem;"></i>
+                </button>
+            </div>
+
+            <!-- Styled Window Description Frame -->
+            <div class="card-body bg-white text-dark text-left p-4" style="white-space: normal; line-height: 1.6;">
+                <p class="font-weight-bold text-secondary mb-3" style="font-size: 1.05rem;">Are you sure you want to proceed?</p>
+                <p class="text-muted mb-2">This action searches the complete global product catalog and assigns all unlinked records directly into your inventory list directory.</p>
+                <p class="text-muted mb-0">Imported listings will default to hidden status configurations across customer portals until prices are set manually.</p>
+            </div>
+
+            <!-- Styled Tool Footer Segment -->
+            <div class="card-footer bg-light text-right p-3" style="border-top: 1px solid #dee2e6; gap: 10px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn btn-sm btn-default font-weight-bold close-custom-modal px-3" style="border: 1px solid #ced4da;">Cancel</button>
+                <a href="import-all-products/" class="btn btn-sm btn-success font-weight-bold px-3 text-white">
+                    <i class="fas fa-check mr-1"></i> Yes, Import Everything
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Adjustment CSS Rules -->
+    <style>
+        /* --- NEW RULE: Hide native Django/Jazzmin save buttons so ONLY the custom one shows --- */
+        button[name="_save"]:not(.custom-save-btn),
+        input[name="_save"]:not(.custom-save-btn) {
+            display: none !important;
+        }
+
+        .custom-jazmin-btn {
+            padding: .45rem .9rem !important;
+            font-size: .875rem !important;
+            line-height: 1.5 !important;
+            border-radius: .25rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            height: 38px !important;
+        }
+
+
+
+        .custom-jazmin-btn {
+            padding: .45rem .9rem !important;
+            font-size: .875rem !important;
+            line-height: 1.5 !important;
+            border-radius: .25rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            height: 38px !important;
+        }
+        #object-tools li, .object-tools li {
+            list-style-type: none !important;
+        }
+
+        /* --- STABLE FLOATING CSS MODAL OVERLAY --- */
+        .custom-modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.4) !important; /* Soft backdrop dimming */
+            z-index: 999999 !important;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-modal-box {
+            background: #ffffff !important;
+            width: 90% !important;
+            max-width: 520px !important;
+            border-radius: 4px !important;
+            overflow: hidden !important;
+            animation: modalFadeIn 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .close-custom-modal:hover {
+            background-color: #dc3545 !important; /* Brightens background box on hover */
+            opacity: 0.9;
+        }
+        @keyframes modalFadeIn {
+            from { transform: scale(0.97); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+
+    <script type="text/javascript">
+        (function($) {
+            $(document).ready(function() {
+                // Open custom modal wrapper programmatically
+                $(document).on('click', '#trigger-custom-modal-btn', function(e) {
+                    e.preventDefault();
+                    $('#custom-import-modal').css('display', 'flex');
+                });
+
+                // Close modal manually when Cancel or backdrop Close is chosen
+                $(document).on('click', '.close-custom-modal', function(e) {
+                    e.preventDefault();
+                    $('#custom-import-modal').css('display', 'none');
+                });
+
+                // Handle background toggling for the edit fields layout grid
+                $(document).on('click', '#toggle-edit-btn', function(e) {
+                    e.preventDefault();
+                    $.get('toggle-edit-mode/', function(htmlFragment) {
+                        $('#changelist-table-container').html(htmlFragment);
+                        
+                        const btn = $('#toggle-edit-btn');
+                        if (btn.hasClass('btn-success')) {
+                            btn.removeClass('btn-success').addClass('btn-danger')
+                               .html('<i class="fas fa-lock mr-1"></i> Exit Editing Mode');
+                        } else {
+                            btn.removeClass('btn-danger').addClass('btn-success')
+                               .html('<i class="fas fa-edit mr-1"></i> Edit Items Here');
+                        }
+                    }).fail(function() {
+                        alert("Could not switch editing states. Workspace configuration error.");
+                    });
+                });
+            });
+        })(django.jQuery || jQuery);
+    </script>
+{% endblock %}
+
+{% block result_list %}
+    <div id="changelist-table-container">
+        <!-- Load our custom partial directly instead of the native Django default -->
+        {% include "admin/merchant_table_partial.html" %}
+    </div>
+{% endblock %}

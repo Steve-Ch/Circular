@@ -42,24 +42,23 @@ class ProductSerializer(serializers.ModelSerializer):
     #     min_length=1, required=True, write_only=True
     # )
 
-    average_rating = serializers.SerializerMethodField()
+    # average_rating = serializers.SerializerMethodField()
     categories_display = serializers.SerializerMethodField(read_only=True)
     images=ProductImagesSerializer(read_only=True,many=True)
     
     class Meta:
         model = Product
-        fields = ['id', 'name', 'package' , 'description', 'categories_display', 'price', 'average_rating', 'images']
+        fields = ['id', 'name', 'package' , 'description', 'categories_display', 'price', 'images']
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_categories_display(self, obj):
         return [cat.name for cat in obj.categories.all()]
     
-    @extend_schema_field(serializers.FloatField)
-    def get_average_rating(self, obj):
-        return obj.reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+    # @extend_schema_field(serializers.FloatField)
+    # def get_average_rating(self, obj):
+    #     return obj.reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
     
     
-
 
 class ProductListSerializer(serializers.ModelSerializer):
     # image = serializers.SerializerMethodField(read_only=True)
@@ -67,7 +66,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'image', 'average_rating', 'categories_display']
+        fields = ['id', 'name', 'price', 'image', 'categories_display']
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_categories_display(self, obj):
@@ -86,16 +85,28 @@ class ProductSearchSuggestionSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class CartItemSerializer(serializers.ModelSerializer):
-    product = serializers.StringRelatedField()
+    merchant_product = serializers.StringRelatedField()
     # Adding a subtotal field is often helpful for cart UI
     total_price = serializers.SerializerMethodField()
-    
+    image = serializers.SerializerMethodField() 
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'image', 'price', 'quantity', 'total_price']
-        read_only_fields = ['id', 'product', 'price', 'total_price']
+        fields = ['id', 'merchant_product', 'price', 'quantity', 'total_price', 'image', ]
+        read_only_fields = ['id', 'merchant_product', 'price', 'total_price']
         extra_kwargs = {
             "quantity": {"required": True},
             
@@ -104,7 +115,11 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(Decimal)
     def get_total_price(self, obj):
-        return obj.quantity * obj.product.price
+        return obj.quantity * obj.merchant_product.price
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_image(self, obj):
+        return obj.image
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -120,10 +135,10 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.StringRelatedField()
+    merchant_product = serializers.StringRelatedField()
     class Meta:
         model = OrderItem
-        fields = ['product', 'quantity', 'price_at_purchase']
+        fields = ['merchant_product', 'quantity', 'price_at_purchase', 'image']
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -138,7 +153,7 @@ class CheckoutResponseSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False, read_only=True)
     status = serializers.CharField(read_only=True)
     checkout_url = serializers.URLField(read_only=True)
-    callback_url = serializers.CharField(required = True, write_only=True)
+    callback_url = serializers.CharField(required = False, write_only=True)
 
 
 class CancelOrderSerializer(serializers.ModelSerializer):
@@ -150,7 +165,7 @@ class CancelOrderSerializer(serializers.ModelSerializer):
         fields = ['cancellation_reason', 'cancellation_note']
 
     def create(self, validated_data):
-        print(validated_data)
+        # print(validated_data)
         # Fetch the order injected from the view's perform_create
         order = validated_data['order']
         
@@ -178,13 +193,16 @@ class ProductMinimalSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'price', 'image']
 
 class WishlistReadSerializer(serializers.ModelSerializer):
-    product = ProductMinimalSerializer(read_only=True)
+    merchant_product = ProductMinimalSerializer(read_only=True)
 
     class Meta:
         model = WishlistItem
-        fields = ['id' ,'product', 'created_at']
+        fields = ['id' ,'merchant_product', 'created_at']
 
 class WishlistWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = WishlistItem
-        fields = ['product'] # User gets injected from request in views
+        fields = ['merchant_product'] # User gets injected from request in views
+        extra_kwargs = {
+        "merchant_product": {"required": True},
+        }

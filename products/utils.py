@@ -2,54 +2,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 import requests
 import requests
-from .models import Transaction, Cart, Order, OrderItem
-from django.db import transaction 
+from .models import Transaction, Order, OrderItem
+from merchant.models import MerchantProduct
 from website.models import SiteConfiguration
-
-
-
-
-
-
-# def finalize_order(user, transaction_obj):
-#     # We use atomic() to ensure that if any step fails, 
-#     # the cart isn't emptied and the order isn't half-created.
-#     with transaction.atomic():
-#         cart = user.cart
-#         cart_items = cart.items.all()
-
-#         # 1. Create the Order instance
-#         # (Assuming you get address/full_name from a saved profile or the request)
-#         order = Order.objects.create(
-#             user=user,
-#             reference=transaction_obj.reference,
-#             status=Order.Status.PAID,
-#             full_name=f"{user.first_name} {user.last_name}",
-#             email=user.email,
-#             address="User Address" # Pull this from your checkout data
-#         )
-
-#         # 2. Bulk create OrderItems
-#         # We prepare a list of OrderItem objects in memory first (more efficient)
-#         order_items = [
-#             OrderItem(
-#                 order=order,
-#                 product=item.product,
-#                 quantity=item.quantity,
-#                 price_at_purchase=item.product.price # Capturing price NOW
-#             )
-#             for item in cart_items
-#         ]
-        
-#         # Save all items to DB in one query
-#         OrderItem.objects.bulk_create(order_items)
-
-#         # 3. Now clear the cart
-#         cart_items.delete()
-
-#         return order
-
-
+from django.db import transaction as db_transaction
+from .models import Transaction
+from services.models import ServiceRequest
+from products.models import Order
+from accounts.utils import send_html_mail
 
 
 
@@ -106,11 +66,8 @@ def paystack_verify(reference):
 
 
 
-from django.db import transaction as db_transaction
-from django.core.exceptions import ValidationError
-from django.db.models import F
-from products.models import Product, Order
-from accounts.utils import send_html_mail
+
+
 
 def finalize_order(ref, status):
     if status == 'success':
@@ -120,7 +77,7 @@ def finalize_order(ref, status):
             
             if transaction.status == Transaction.Status.PENDING:
                 user = transaction.user
-                cart_items = user.cart.items.select_related('product').all()
+                cart_items = user.cart.items.select_related('merchant_product').all()
                 
                 order = Order.objects.create(
                     user=user,
@@ -134,29 +91,14 @@ def finalize_order(ref, status):
 
                 order_items = []
                 for item in cart_items:
-                    product = Product.objects.get(id=item.product.id)
-
-                    # LOCK the product row so nobody else can change its quantity right now
-                    # product = Product.objects.select_for_update().get(id=item.product.id)
-                    
-                    # if product.quantity < item.quantity:
-                    #     # This triggers the rollback of the transaction.atomic()
-                    #     raise ValidationError(f"Stock ran out for {product.name} during payment.")
-
-                    # Use F expression to avoid Python-level race conditions
-                    # product.quantity = F('quantity') - item.quantity
-                    # product.save()
-                    
-                    # Refresh from DB to get the current price for order_items
-                    # product.refresh_from_db() 
-                    
+                    merchant_product = MerchantProduct.objects.get(id=item.merchant_product.id)         
                     order_items.append(
                         OrderItem(
                             order=order,
-                            product=product,
+                            merchant_product=merchant_product,
                             quantity=item.quantity,
-                            price_at_purchase=product.price,
-                            product_name = product.name,
+                            price_at_purchase=merchant_product.price,
+                            product_name = merchant_product.product.name,
                         )
                     )
 
@@ -165,9 +107,10 @@ def finalize_order(ref, status):
                 
                 transaction.status = Transaction.Status.SUCCESSFUL
                 transaction.save()
-
-
-
+                
+                if user.eligible_for_free_delivery:
+                    user.eligible_for_free_delivery = False
+                    user.save(update_fields=['eligible_for_free_delivery'])
 
                 # 1. Fetch all active users belonging to the 'Rider' group
                 rider_emails = list(
@@ -176,7 +119,6 @@ def finalize_order(ref, status):
                         is_active=True
                     ).values_list('email', flat=True)
                 )
-
                 
                 # 3. Call your function passing the list of emails directly into the first argument
                 if rider_emails:
@@ -202,3 +144,47 @@ def finalize_order(ref, status):
 
 
 
+
+
+def finalize_service_request(ref, status):
+    """Marks request as PAID and alerts the provider via WhatsApp."""
+    if status == 'success':
+        with db_transaction.atomic():
+            txn = Transaction.objects.select_for_update().get(reference=ref)
+            
+            if txn.status == Transaction.Status.PENDING and txn.payment_type == Transaction.Type.SERVICE:
+                
+                # Update Transaction
+                txn.status = Transaction.Status.SUCCESSFUL
+                txn.save()
+
+                # Update Service Request
+                service_req = txn.service_request
+                service_req.status = ServiceRequest.StatusChoices.PAID
+                service_req.save()
+
+                # Dispatch WhatsApp Message
+                provider = service_req.estate_service.provider
+                resident = service_req.resident
+                
+                msg = (
+                    # f"🔔 *New Service Request!*\n\n"
+                    f"Service: {service_req.estate_service.service.name}\n"
+                    f"Resident: {resident.full_name}\n"
+                    f"Phone: {resident.phone_number}\n"
+                    f"Address: {resident.address}, {resident.estate.name}\n"
+                    f"Notes: {service_req.notes or 'None'}\n\n"
+                    f"Please contact the resident to proceed."
+                )
+                
+                # Run this asynchronously (e.g., Celery) in production so it doesn't block the webhook response
+                # send_whatsapp_message(provider.phone, msg)
+
+            
+                send_html_mail(
+                    email= provider.email,  # Passing the list here
+                    subject='🔔 New Service Request!',
+                    message=msg,
+                    title='New Service Request!',
+                    support=False,
+                    )

@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'accounts',
     'products',
     'website',
+    'merchant',
+    'services',
 
     #others
     'rest_framework',
@@ -73,6 +75,14 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = (
+    'merchant.backends.MerchantStaffPermissionBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    
+)
+
+
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -231,6 +241,8 @@ JAZZMIN_SETTINGS = {
 
     "show_ui_builder" : False,
 
+    "custom_js": "js/admin_dashboard.js",
+
     # Logo to use for your site, must be present in static files, used for brand on top left
     "site_logo": "logo.png",
 
@@ -278,8 +290,8 @@ JAZZMIN_SETTINGS = {
 JAZZMIN_UI_TWEAKS = {
     "theme": "flatly",
 }
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.hostinger.com'
 EMAIL_PORT = 587  # Or 587 if you prefer STARTTLS
 EMAIL_USE_SSL = False  # Set to False if using port 587
@@ -331,4 +343,9 @@ SIGNATURE_KEY = config('SIGNATURE_KEY')
 RESEND_SENDER_EMAIL = config('RESEND_SENDER_EMAIL')
 RESEND_API_KEY = config('RESEND_API_KEY')
 
-# APPEND_SLASH = True
+
+GOOGLE_OAUTH2_CLIENT_IDS = [
+]
+
+APPLE_CLIENT_IDS = [
+]

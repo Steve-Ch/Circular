@@ -27,7 +27,10 @@ class SiteConfiguration(SingletonModel):
         help_text="turning this on enables free dlivery for new users"
         )
 
-
+    # maintanance_mode = models.BooleanField(
+    #     default=False,
+    #     help_text="sets the app to maintanance mode"
+    #     )
 
     def __str__(self):
         return "Site Configuration"

@@ -160,8 +160,8 @@ def send_html_mail(email, subject, message, title=None, support=True, otp=None):
     
     html_template_path = "email/mail_template.html" 
     
-    send_email_in_thread(subject, context, html_template_path, recipient_list)
-
+    # send_email_in_thread(subject, context, html_template_path, recipient_list)
+    send_email_with_html(subject, context, html_template_path, recipient_list)
 
 
 def generate_otp(length=6):

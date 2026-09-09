@@ -9,7 +9,7 @@ from .paginations import StandardResultsSetPagination
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError, PermissionDenied, NotFound
 from drf_spectacular.utils import extend_schema
-from .utils import initiate_payment, paystack_verify, finalize_order
+from .utils import initiate_payment, finalize_service_request, finalize_order
 from django.conf import settings
 from .models import (
     Product, Cart,CartItem,Order,
@@ -17,6 +17,7 @@ from .models import (
     ProductImage, Category,RefundRequest,
     )
 from website.models import SiteConfiguration
+from merchant.models import MerchantProduct
 from .serializers import (
     ProductSerializer, 
     CartSerializer, 
@@ -29,13 +30,13 @@ from .serializers import (
     CancelOrderSerializer,
     WishlistReadSerializer, 
     WishlistWriteSerializer,
-    ProductSearchSuggestionSerializer
+    ProductSearchSuggestionSerializer,
     )
 from django.db import transaction
-
+from django.db.models import OuterRef, Subquery
 # Create your views here.
 
-from django.db.models import OuterRef, Subquery
+
 
 
 
@@ -84,15 +85,24 @@ class CategoryListAPIView(generics.ListAPIView):
 
 
 
-class ReviewListAPIView(generics.ListAPIView):
+class ReviewListAPIView(generics.ListCreateAPIView):
     serializer_class = ReviewSerializer
     pagination_class = StandardResultsSetPagination
     
+    # 2. This allows GET requests for everyone, but restricts POST to authenticated users
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+    
     def get_queryset(self):
-        pk = self.kwargs['pk']
-        return Review.objects.filter(product_id = pk)
+        # Good practice: use .get() to avoid KeyError if 'id' is missing
+        product_id = self.kwargs.get('id') 
+        return Review.objects.filter(merchant_product_id=product_id)
 
-
+    def perform_create(self, serializer):
+        # 3. No need to check auth here anymore. DRF handles it upstream.
+        serializer.save(user=self.request.user)
 
 class ReviewDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ReviewSerializer
@@ -100,8 +110,8 @@ class ReviewDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_object(self):
         # This ensures the user only ever interacts with THEIR review for THIS product
-        product_id = self.kwargs.get('pk')
-        return Review.objects.filter(user=self.request.user, product_id=product_id).first()
+        product_id = self.kwargs.get('id')
+        return Review.objects.filter(user=self.request.user, merchant_product_id=product_id).first()
 
     def post(self, request, *args, **kwargs):
         # Custom logic to handle "Create or Update" in one POST request
@@ -114,7 +124,7 @@ class ReviewDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             serializer = self.get_serializer(data=request.data)
         
         serializer.is_valid(raise_exception=True)
-        serializer.save(user=self.request.user, product_id=self.kwargs.get('pk'))
+        serializer.save(user=self.request.user, merchant_product_id=self.kwargs.get('pk'))
         
         return Response(serializer.data, status=status.HTTP_200_OK if instance else status.HTTP_201_CREATED)
 
@@ -168,13 +178,26 @@ class CartItemCreateAPIView(generics.CreateAPIView):
     # queryset = CartItem.objects.all()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 class CartItemCreateAPIView(generics.CreateAPIView):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         product_id = self.kwargs.get('product_id')
-        product = get_object_or_404(Product, pk=product_id)
+        merchant_product = get_object_or_404(MerchantProduct, pk=product_id)
         cart, created = Cart.objects.get_or_create(user=self.request.user)
         
         # Validate the incoming data structure first
@@ -183,7 +206,7 @@ class CartItemCreateAPIView(generics.CreateAPIView):
         requested_quantity = serializer.validated_data.get('quantity')
 
         # Check if this product is already in the user's cart
-        existing_item = CartItem.objects.filter(cart=cart, product=product).first()
+        existing_item = CartItem.objects.filter(cart=cart, merchant_product=merchant_product).first()
 
         if existing_item:
             # Calculate total quantity if we add the new request
@@ -207,7 +230,7 @@ class CartItemCreateAPIView(generics.CreateAPIView):
         # if requested_quantity > product.quantity:
         #     raise ValidationError({"quantity": f"You can't order more than the available quantity ({product.quantity})."})
             
-        serializer.save(product=product, cart=cart)
+        serializer.save(merchant_product=merchant_product, cart=cart)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -258,7 +281,13 @@ class CheckoutView(generics.GenericAPIView):
 
         user = request.user
         cart = Cart.objects.get(user=user)
-        cart_items = cart.items.select_related('product')
+        
+        if not cart.items.filter(merchant_product__display=True, merchant_product__product__display=True).exists():
+            return Response({
+                "error": "Some items in your cart just became unavailable and were removed. Your cart is now empty."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # cart_items = cart.items.select_related('merchant_product')
         minimum_order = SiteConfiguration.get_solo().minimum_tx
         subtotal = cart.subtotal
         if subtotal < minimum_order:
@@ -288,12 +317,20 @@ class CheckoutView(generics.GenericAPIView):
 
 
         
-        pay_res = initiate_payment(
-            amount=amount, 
-            email=user.email, 
-            reference=transaction_obj.reference,
-            callback_url = callback_url
-        )
+        if callback_url:
+            pay_res = initiate_payment(
+                amount=amount, 
+                email=user.email, 
+                reference=transaction_obj.reference,
+                callback_url = callback_url
+            )
+            
+        else: 
+            pay_res = initiate_payment(
+                amount=amount, 
+                email=user.email, 
+                reference=transaction_obj.reference,
+            )
 
         if pay_res.get('status'):
             data = {
@@ -320,7 +357,13 @@ class paystack_webhook(APIView):
 
             # main logic
             data = request.data.get("data")
+            ref = data['reference']
+            txn = Transaction.objects.get(reference=ref)
 
+            if txn.payment_type == Transaction.Type.ORDER:
+                    finalize_order(ref, 'success')
+            elif txn.payment_type == Transaction.Type.SERVICE:
+                finalize_service_request(ref, 'success')
 
             # create thread for quick responce
             # payment_verification = threading.Thread(
@@ -330,7 +373,7 @@ class paystack_webhook(APIView):
 
             # payment_verification.start()
             
-            finalize_order(data['reference'], data['status'])
+            # finalize_order(data['reference'], data['status'])
 
             return Response({}, status=200)
 
@@ -411,7 +454,7 @@ class WishlistMoveToCartView(generics.GenericAPIView):
                 )
                 cart_item, created = CartItem.objects.get_or_create(
                     cart=cart,
-                    product=wishlist_item.product
+                    merchant_product=wishlist_item.merchant_product
                 )
                 
                 if not created:

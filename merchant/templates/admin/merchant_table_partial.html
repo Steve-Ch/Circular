@@ -1,0 +1,20 @@
+{% load admin_list %}
+
+<!-- Removed the nested <form> and csrf_token. The parent change_list.html already provides them. -->
+
+{% if cl.formset %}
+    {{ cl.formset.management_form }}
+{% endif %}
+
+<!-- This renders the native data matrix table rows natively -->
+{% result_list cl %}
+
+<!-- Render Jazzmin's native action buttons only when items are editable -->
+{% if cl.list_editable and cl.has_add_permission or cl.list_editable and cl.queryset.exists %}
+    <div class="submit-row card-footer text-left mt-3">
+        <!-- Added 'custom-save-btn' class so we can isolate this specific button -->
+        <button type="submit" name="_save" class="btn btn-sm btn-primary default font-weight-bold custom-save-btn">
+            <i class="fas fa-save mr-1"></i> Save Changes
+        </button>
+    </div>
+{% endif %}

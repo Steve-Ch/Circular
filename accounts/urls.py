@@ -11,11 +11,15 @@ from .views import (
     UserPasswordResetView,
     UserConfirmPasswordResetView,
     UpdateUserView,
-    EstateListAPIView
+    EstateListAPIView,
+    GoogleSignInView,
+    AppleSignInView
 )
 
 urlpatterns = [
     # path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/apple/', AppleSignInView.as_view(), name='apple-sign-in'),
+    path('auth/google/', GoogleSignInView.as_view(), name='google-sign-in'),
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', RegisterationView.as_view()),

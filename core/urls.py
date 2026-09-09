@@ -19,6 +19,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from website.views import admin_dashboard_stats
 
 urlpatterns = [
     # schema generation
@@ -30,10 +31,13 @@ urlpatterns = [
     # tinymce
     path('tinymce/', include('tinymce.urls')),
 
-    
+    path('admin/dashboard-stats/', admin_dashboard_stats, name='admin_dashboard_stats'),
+
     path('admin/', admin.site.urls),
     path('account/', include('accounts.urls')),
     path('', include('products.urls')),
+    path('merchant-products/', include('merchant.urls')),
+    path('services/', include('services.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
