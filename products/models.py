@@ -323,7 +323,7 @@ class CartItem(models.Model):
         return self.quantity * self.merchant_product.price
 
     def __str__(self):
-        return f"{self.merchant_product__product.name} x {self.quantity}"
+        return f"{self.merchant_product.product.name} x {self.quantity}"
 
 
 

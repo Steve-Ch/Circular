@@ -345,7 +345,12 @@ RESEND_API_KEY = config('RESEND_API_KEY')
 
 
 GOOGLE_OAUTH2_CLIENT_IDS = [
+    "609352848778-qtkoq2a55co4nkt54bbad79vuqvp06j9.apps.googleusercontent.com", # Web
+    "609352848778-2smu5mnfv71rh6u5u4h1r91nhtj6k31f.apps.googleusercontent.com", # Android
+    "609352848778-rrih4r2n0a0b9mebqnl9lkkng3o01kha.apps.googleusercontent.com", # iOS
 ]
 
 APPLE_CLIENT_IDS = [
+    "com.circular.globe",            # Replace with iOS Bundle ID
+    "com.circular.globe.auth",    # Replace with Web/Android Service ID
 ]

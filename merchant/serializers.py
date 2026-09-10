@@ -12,7 +12,7 @@ from products.serializers import ProductImagesSerializer
 
 
 class MerchantSerializer(serializers.ModelSerializer):
-
+    category = serializers.StringRelatedField()
     class Meta:
         model = Merchant
         fields = ['id', 'store_name', 'category', 'brand_logo']
