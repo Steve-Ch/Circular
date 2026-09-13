@@ -118,6 +118,17 @@ class MerchantProduct(TimeStamps, models.Model):
         return self.product.name
 
     @property
+    def store_name(self):
+        return self.merchant.store_name
+
+
+    def categories(self):
+        return [cat.name for cat in self.product.categories.all()]
+    # categories_display.short_description = "Categories"
+
+
+
+    @property
     def image_preview(self):
         return self.product.image_preview
 

@@ -54,35 +54,28 @@ class ProductAdmin(admin.ModelAdmin):
     # readonly_fields = ('created_at', 'updated_at', 'created_by_merchant')
 
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        # When the autocomplete AJAX request hits this admin, 
-        # it will filter out the restricted items for merchants.
-        if not request.user.is_superuser:
-            qs = qs.filter(package=False, display=True)
-        return qs
-
-
-    def get_fields(self, request, obj=None):
-        # Base fields for editing vs adding
-        if obj:  # editing existing object
-            fields = [
-                'name', 'description', 'categories', 'price',
-                'display', 'created_at', 'updated_at', 'package', 'created_by_merchant'
-            ]
-        else:  # adding new object
-            fields = [
-                'name', 'description', 'categories', 'price',
-                'display', 'package',
-            ]
+def get_fields(self, request, obj=None):
+    # Base fields for editing vs adding
+    if obj:  # editing existing object
+        fields = [
+            'name', 'description', 'categories', 'price',
+            'display', 'created_at', 'updated_at', 'package', 'created_by_merchant'
+        ]
+    else:  # adding new object
+        fields = [
+            'name', 'description', 'categories', 'price',
+            'display', 'package',
+        ]
+        
+    # Hide fields from non-superusers (merchant staff) safely
+    if not request.user.is_superuser:
+        if 'package' in fields:
+            fields.remove('package')
+        if 'created_by_merchant' in fields:
+            fields.remove('created_by_merchant')
             
-        # Hide the package field from non-superusers (merchant staff)
-        if not request.user.is_superuser:
-            if 'package' in fields:
-                fields.remove('package')
-                fields.remove('created_by_merchant')
-                
-        return tuple(fields)
+    return tuple(fields)
+
 
 
     def get_readonly_fields(self, request, obj=None):

@@ -139,7 +139,10 @@ class MerchantProductListAPIView(generics.ListAPIView):
         if user.is_authenticated and hasattr(user, 'estate') and user.estate:
             merchants = user.estate.main_merchants.all()
             # Return private/personalized records for logged-in users
-            return MerchantProduct.objects.filter(merchant__in=merchants, display=True).order_by('created_at')
+            return MerchantProduct.objects.filter(
+                merchant__in=merchants, 
+                display=True, 
+                product__display=True).order_by('-created_at')
             # return MerchantProduct.objects.filter(display=True)
         
         # Return only public records for anonymous guests

@@ -13,7 +13,7 @@ from accounts.utils import send_html_mail
 
 
 
-def initiate_payment(amount, email, reference, callback_url):
+def initiate_payment(amount, email, reference, callback_url= None):
         key = settings.PAYSTACK_SECRET_KEY
         if SiteConfiguration.get_solo().test_mode:
             key = settings.PAYSTACK_SECRET_KEY_TEST

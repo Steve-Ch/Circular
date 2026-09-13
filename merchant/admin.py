@@ -115,19 +115,37 @@ class SuperuserMerchantFilter(SimpleListFilter):
         return queryset
 
 
+
+class CategoryFilter(SimpleListFilter):
+    title = _('Category')  # Sets the display name in the admin panel sidebar
+    parameter_name = 'category'
+
+    def lookups(self, request, model_admin):
+        # Fetch distinct category names. Replace Category with your actual Category model if imported differently.
+        from .models import Category  
+        return [(c.name, c.name) for c in Category.objects.all()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(product__categories__name=self.value())
+        return queryset
+
+    
+
 @admin.register(MerchantProduct)
 class MerchantProductAdmin(admin.ModelAdmin):
     form = MerchantProductForm
-    list_display = ('product', 'price', 'display', 'image_preview')
+    list_display = ('product', 'price', 'display', 'store_name', 'categories', 'image_preview')
     search_fields = ('product__name', 'product__categories__name')
     autocomplete_fields = ['product'] 
     actions = ['import_all_global_products'] 
 
     def get_list_filter(self, request):
-        """ Assign the custom filter dynamically """
-        if request.user.is_superuser:
-            return (SuperuserMerchantFilter,)
-        return ()
+            """ Include Category filter for all users, add Store filter for superusers """
+            filters = [CategoryFilter]
+            if request.user.is_superuser:
+                filters.append(SuperuserMerchantFilter)
+            return tuple(filters)
 
     def get_changelist_instance(self, request):
         if request.session.get('merchant_edit_mode', False):

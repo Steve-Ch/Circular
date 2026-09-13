@@ -6,6 +6,18 @@ from .models import (
     )
 
 
+
+# def get_user_provider(user):
+#     """
+#     returns seervice provider
+#     """
+#     if user.is_superuser:
+#         return None
+#     # if hasattr(user, 'merchant_profile'):
+#     #     return user.merchant_profile
+#     return user.merchant_staff_profiles.first()
+
+
 # Register your models here.
 class ServiceImageInline(admin.StackedInline):
     model = ServiceImage
@@ -38,6 +50,20 @@ class ServiceAdmin(admin.ModelAdmin):
     # list_filter = (,)
     search_fields = ('name',)
     # readonly_fields = ('service_providers',)
+
+
+
+    # def get_queryset(self, request):
+    #     qs = super().get_queryset(request)
+    #     if request.user.is_superuser:
+    #         return qs
+            
+    #     provider = get_user_merchant(request.user)
+    #     if merchant:
+    #         return qs.filter(merchant=merchant)
+            
+    #     return qs.none()
+
 
 @admin.register(ServiceProvider)
 class ServiceProviderAdmin(admin.ModelAdmin):

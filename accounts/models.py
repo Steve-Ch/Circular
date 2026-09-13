@@ -16,8 +16,8 @@ class Estate(models.Model):
     address = models.TextField()
     state = models.CharField(max_length=100)
     town = models.CharField(max_length=100)
-    latitude = models.DecimalField(max_digits=12, decimal_places=6)
-    longitude = models.DecimalField(max_digits=12, decimal_places=6)
+    latitude = models.DecimalField(max_digits=15, decimal_places=12)
+    longitude = models.DecimalField(max_digits=15, decimal_places=12)
     image = ProcessedImageField(
         upload_to='estates',
         processors=[ResizeToFit(1024, 1024)],
