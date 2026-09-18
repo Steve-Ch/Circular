@@ -1,0 +1,13 @@
+{% for product in products %}
+    <!-- Clicking this swaps the search area with the confirmation panel -->
+    <button type="button" class="list-group-item list-group-item-action"
+            hx-get="{% url 'preview_match' product.id unlinked_id %}"
+            hx-target="#action-panel">
+        {{ product.name }} 
+        {% if not product.categories.exists %}
+            <span class="badge badge-danger float-right">Needs Category</span>
+        {% endif %}
+    </button>
+{% empty %}
+    <div class="list-group-item text-muted">No unlinked products found.</div>
+{% endfor %}

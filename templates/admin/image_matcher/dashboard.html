@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+<div class="row mb-3">
+    <div class="col-12 text-right">
+        <h4 class="text-muted">Unmatched Products: <strong class="text-danger">{{ unmatched_total }}</strong></h4>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header p-2">
+        <ul class="nav nav-pills" id="matcher-tabs">
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'queue' %}active{% endif %}" 
+                   hx-get="{% url 'tab_image_queue' %}" hx-target="#workspace">Match By Image (ZIP)</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'name' %}active{% endif %}" 
+                   hx-get="{% url 'tab_match_by_name' %}" hx-target="#workspace">Match By Name (Google)</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'barcode' %}active{% endif %}" 
+                   hx-get="{% url 'tab_match_by_barcode' %}" hx-target="#workspace">Match By Barcode</a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body" id="workspace" 
+         hx-get="{% if active_tab == 'queue' %}{% url 'tab_image_queue' %}{% elif active_tab == 'name' %}{% url 'tab_match_by_name' %}{% else %}{% url 'tab_match_by_barcode' %}{% endif %}" 
+         hx-trigger="load">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+</div>
+
+<script>
+    // Pure UI logic to make pills look active when clicked
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+</script>
+{% endblock %}

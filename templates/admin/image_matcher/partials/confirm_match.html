@@ -1,0 +1,37 @@
+<style>
+    .cat-checkbox:checked + .cat-label { background-color: #007bff !important; color: white !important; border-color: #007bff !important; }
+    .cat-label { cursor: pointer; padding: 6px 12px; font-size: 0.85rem; user-select: none; }
+</style>
+
+<div class="card border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">Confirm Match: {{ product.name }}</h5>
+    </div>
+    <div class="card-body">
+        <form action="{% url 'link_image_to_product' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="unlinked_id" value="{{ unlinked.id }}">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <h6 class="text-danger font-weight-bold mb-2">Select Categories (Mandatory)</h6>
+            <p class="small text-muted mb-3">Highlighted items are currently saved to this product. Check/uncheck to modify.</p>
+            
+            <div class="d-flex flex-wrap mb-4" style="gap: 5px;">
+                {% for cat in all_categories %}
+                    <input type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}" class="d-none cat-checkbox"
+                           {% if cat in product.categories.all %}checked{% endif %}>
+                    <label for="cat_{{ cat.id }}" class="badge badge-light border cat-label m-0 text-dark">{{ cat.name }}</label>
+                {% endfor %}
+            </div>
+
+            <hr>
+            <button type="submit" class="btn btn-success btn-block btn-lg">
+                <i class="fas fa-check-circle"></i> Confirm Match & Save
+            </button>
+            <button type="button" class="btn btn-light btn-block mt-2" 
+                    hx-get="{% url 'matcher_board' %}" hx-target="#workspace">
+                Cancel / Back to Search
+            </button>
+        </form>
+    </div>
+</div>

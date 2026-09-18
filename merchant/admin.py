@@ -135,6 +135,7 @@ class CategoryFilter(SimpleListFilter):
 @admin.register(MerchantProduct)
 class MerchantProductAdmin(admin.ModelAdmin):
     form = MerchantProductForm
+    ordering = ('product', 'price',)
     list_display = ('product', 'price', 'display', 'store_name', 'categories', 'image_preview')
     search_fields = ('product__name', 'product__categories__name')
     autocomplete_fields = ['product'] 
@@ -142,7 +143,7 @@ class MerchantProductAdmin(admin.ModelAdmin):
 
     def get_list_filter(self, request):
             """ Include Category filter for all users, add Store filter for superusers """
-            filters = [CategoryFilter]
+            filters = [CategoryFilter, 'display',]
             if request.user.is_superuser:
                 filters.append(SuperuserMerchantFilter)
             return tuple(filters)

@@ -3,6 +3,14 @@ from solo.models import SingletonModel
 from datetime import time
 
 
+class TimeStamps(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
 
 class SiteConfiguration(SingletonModel):
     default_delivery_fee = models.DecimalField(
@@ -59,3 +67,16 @@ class DeliveryTier(models.Model):
         return f"Orders over {self.min_order_value} = Fee: {self.delivery_fee}"
 
 
+
+
+class UnlinkedImage(TimeStamps, models.Model):
+    image = models.ImageField(upload_to='unlinked_staging/')
+    filename = models.CharField(max_length=255)
+    # New field to track skip order
+    sort_order = models.DateTimeField(auto_now_add=True) 
+
+    class Meta:
+        ordering = ['sort_order'] # Images processed by oldest sort_order first
+
+    def __str__(self):
+        return self.filename

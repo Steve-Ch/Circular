@@ -1,0 +1,199 @@
+{% if not product %}
+    <div class="alert alert-success mt-3 text-center">
+        <i class="fas fa-check-circle"></i> No missing images for products needing name matches!
+    </div>
+{% else %}
+<div class="row">
+    <!-- LEFT SIDE: Actions & Paste Zone -->
+    <div class="col-md-6 text-center border-right">
+        <h5>Product: <span class="text-primary">{{ product.name }}</span></h5>
+        {% if product.barcode %}
+            <p class="text-muted mb-3">Barcode: {{ product.barcode }}</p>
+        {% endif %}
+
+        <a href="https://www.google.com/search?q={{ product.name|urlencode }}&tbm=isch" 
+           target="_blank" class="btn btn-dark btn-lg mb-4 w-100 shadow-sm">
+            <i class="fas fa-external-link-alt"></i> Search Image on Google
+        </a>
+
+        <div id="paste-zone" class="p-4 mb-3" style="border: 3px dashed #ced4da; border-radius: 10px; background-color: #f8f9fa; transition: 0.3s;">
+            <i class="fas fa-paste fa-3x text-secondary mb-2" id="paste-icon"></i>
+            <h5 class="text-secondary" id="paste-text">Press <strong>Ctrl+V</strong> to paste image here</h5>
+            <img id="paste-preview" class="img-fluid rounded shadow-sm mt-3" style="display: none; max-height: 300px; margin: 0 auto;">
+        </div>
+
+        <form action="{% url 'skip_product' product.id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="active_tab" value="name">
+            <button type="submit" class="btn btn-warning btn-sm">Skip For Now</button>
+        </form>
+    </div>
+
+    <!-- RIGHT SIDE: Categories & Submission -->
+    <div class="col-md-6">
+        <h5 class="{% if not product.description %}text-warning font-weight-bold{% else %}text-secondary{% endif %} mb-2">
+            Description
+        </h5>
+
+        <form action="{% url 'finalize_match' %}" method="post" enctype="multipart/form-data" id="match-form">
+            {% csrf_token %}
+            <input type="hidden" name="active_tab" value="name">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            
+            <textarea name="description" class="form-control mb-4" rows="3" 
+                      placeholder="Enter product description...">{{ product.description|default_if_none:'' }}</textarea>
+
+            <h5 class="{% if not product.categories.exists %}text-danger font-weight-bold{% else %}text-secondary{% endif %} mb-3">
+                Categories {% if not product.categories.exists %}(Compulsory){% endif %}
+            </h5>
+
+            <input type="file" name="pasted_file" id="hidden-file-input" class="d-none" accept="image/*">
+            <input type="text" name="pasted_url" id="hidden-url-input" class="d-none">
+
+            <div class="d-flex flex-wrap mb-4" style="gap: 5px;">
+                {% for cat in categories %}
+                    <input type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}" class="d-none cat-checkbox" {% if cat in product.categories.all %}checked{% endif %}>
+                    <label for="cat_{{ cat.id }}" class="badge badge-light border cat-label m-0 text-dark">{{ cat.name }}</label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-success btn-block btn-lg" id="confirm-btn" disabled>
+                <i class="fas fa-check-circle"></i> Confirm Match & Save
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- EXACT DESIGN MODAL -->
+<div class="modal fade" id="emptyDescModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border: none; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden;">
+            
+            <!-- Flat Header with Title Left, X Right -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 0 24px; background: white;">
+                <h5 style="margin: 0; color: #495057; font-weight: 500; font-size: 1.1rem;">Missing Description</h5>
+                <button type="button" class="dismiss-modal-btn" aria-label="Close" style="background: transparent; border: none; font-size: 1.5rem; color: #adb5bd; cursor: pointer; outline: none; padding: 0; line-height: 1;">
+                    &times;
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="modal-body text-center" style="padding: 20px 30px 40px 30px; background: white;">
+                <!-- Orange Circle Icon -->
+                <div style="width: 60px; height: 60px; background-color: #f39c12; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: 600; margin-bottom: 20px;">
+                    !
+                </div>
+                
+                <h5 style="color: #333; font-weight: 400; margin-bottom: 12px; font-size: 1.15rem;">
+                    This product does not have a <strong>description</strong>.
+                </h5>
+                
+                <p style="color: #6c757d; font-size: 0.95rem; margin-bottom: 0; line-height: 1.5;">
+                    Leaving the description blank may affect how the product appears to customers. Are you sure you want to proceed without adding one?
+                </p>
+            </div>
+            
+            <!-- Gray Flat Footer -->
+            <div class="modal-footer justify-content-center" style="background-color: #eff2f5; border-top: 1px solid #e9ecef; padding: 20px; border-radius: 0 0 8px 8px;">
+                <button type="button" class="btn dismiss-modal-btn" style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; padding: 10px 30px; border-radius: 6px; font-weight: 500; margin-right: 15px;">
+                    Cancel
+                </button>
+                <button type="button" class="btn" id="modal-continue-btn" style="background-color: #2c3e50; border: none; color: white; padding: 10px 30px; border-radius: 6px; font-weight: 500;">
+                    Continue Anyway
+                </button>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    let allowEmptySubmit = false;
+
+    // 1. Intercept Form Submission
+    document.getElementById('match-form').addEventListener('submit', function(e) {
+        const descTextarea = this.querySelector('textarea[name="description"]');
+        if (descTextarea && descTextarea.value.trim() === "" && !allowEmptySubmit) {
+            e.preventDefault(); 
+            $('#emptyDescModal').modal('show'); 
+        }
+    });
+
+    // 2. Manual trigger for closing the Modal (works perfectly on both X and Cancel buttons)
+    document.querySelectorAll('.dismiss-modal-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            $('#emptyDescModal').modal('hide');
+        });
+    });
+
+    // 3. Handle "Continue Anyway" Button
+    document.getElementById('modal-continue-btn').addEventListener('click', function() {
+        allowEmptySubmit = true; 
+        $('#emptyDescModal').modal('hide'); 
+        document.getElementById('match-form').submit(); 
+    });
+
+    // 4. Fixed Global Paste Listener
+    document.addEventListener('paste', function(e) {
+        if (['TEXTAREA', 'INPUT'].includes(e.target.tagName)) {
+            return;
+        }
+
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        const fileInput = document.getElementById('hidden-file-input');
+        const urlInput = document.getElementById('hidden-url-input');
+        const preview = document.getElementById('paste-preview');
+        const pasteIcon = document.getElementById('paste-icon');
+        const pasteText = document.getElementById('paste-text');
+        const confirmBtn = document.getElementById('confirm-btn');
+
+        if (!items) return;
+
+        for (let index in items) {
+            const item = items[index];
+
+            if (item.kind === 'file' && item.type.includes('image/')) {
+                const blob = item.getAsFile();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(blob);
+                fileInput.files = dataTransfer.files;
+                urlInput.value = ""; 
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                    pasteIcon.style.display = 'none';
+                    pasteText.style.display = 'none';
+                    confirmBtn.disabled = false;
+                };
+                reader.readAsDataURL(blob);
+                e.preventDefault();
+                return;
+            } 
+            else if (item.kind === 'string' && item.type === 'text/plain') {
+                item.getAsString(function(str) {
+                    if (str.startsWith('http')) {
+                        urlInput.value = str;
+                        fileInput.value = ""; 
+                        
+                        preview.src = str;
+                        preview.style.display = 'block';
+                        pasteIcon.style.display = 'none';
+                        pasteText.style.display = 'none';
+                        confirmBtn.disabled = false;
+                    }
+                });
+                e.preventDefault();
+                return;
+            }
+        }
+    });
+</script>
+
+<style>
+    .cat-checkbox:checked + .cat-label { background-color: #007bff !important; color: white !important; border-color: #007bff !important; }
+    .cat-label { cursor: pointer; padding: 8px 14px; user-select: none; font-size: 0.9rem;}
+</style>
+{% endif %}

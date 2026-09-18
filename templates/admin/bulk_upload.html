@@ -1,0 +1,91 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-file-upload mr-2"></i> Bulk Product & Image Upload</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    <p class="text-muted">You can upload files individually or together. New products will automatically be created with <code>display = False</code> until matched with images.</p>
+                    
+                    <div class="form-group">
+                        <label for="spreadsheet_file">Spreadsheet (CSV, XLSX)</label>
+                        <div class="input-group">
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="spreadsheet_file" name="spreadsheet_file" accept=".csv, .xlsx, .xls, .txt">
+                                <label class="custom-file-label" for="spreadsheet_file">Choose spreadsheet file...</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <label for="zip_file">Camera Images Archive (.ZIP)</label>
+                        <div class="input-group">
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="zip_file" name="zip_file" accept=".zip">
+                                <label class="custom-file-label" for="zip_file">Choose ZIP folder...</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-cloud-upload-alt mr-1"></i> Start Bulk Processing
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Custom file input behavior for Bootstrap / Jazzmin
+    document.querySelectorAll('.custom-file-input').forEach(input => {
+        input.addEventListener('change', e => {
+            let fileName = e.target.files[0].name;
+            e.target.nextElementSibling.innerText = fileName;
+        });
+    });
+</script>
+
+
+<!-- Full Screen Loading Overlay -->
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; flex-direction: column; justify-content: center; align-items: center;">
+    <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem; border-width: 0.35em;">
+        <span class="sr-only">Loading...</span>
+    </div>
+    <h3 class="mt-4 text-primary font-weight-bold">Processing Data...</h3>
+    <p class="text-muted">This may take a few moments for large files. Please do not close this window.</p>
+</div>
+
+<script>
+    // Automatically trigger the loading overlay when any form on the page is submitted
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            // Optional: Check if file inputs are empty before showing spinner
+            const fileInputs = this.querySelectorAll('input[type="file"]');
+            let hasFile = fileInputs.length === 0; // If no file inputs exist, assume it's the Step 2 form
+            
+            fileInputs.forEach(input => {
+                if (input.files.length > 0) hasFile = true;
+            });
+
+            if (hasFile) {
+                document.getElementById('loading-overlay').style.display = 'flex';
+                // Disable submit buttons to prevent double-clicking
+                const btns = this.querySelectorAll('button[type="submit"]');
+                btns.forEach(btn => btn.classList.add('disabled'));
+            }
+        });
+    });
+</script>
+
+{% endblock %}
+
+
+

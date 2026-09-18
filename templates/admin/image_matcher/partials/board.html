@@ -1,0 +1,69 @@
+<style>
+    /* CSS logic for the selectable pills */
+    .category-pill-checkbox:checked + .category-pill-label {
+        background-color: #007bff !important; /* Jazzmin Primary Blue */
+        color: white !important;
+        border-color: #007bff !important;
+    }
+    .category-pill-label {
+        cursor: pointer;
+        font-size: 0.85rem;
+        padding: 8px 15px;
+        transition: all 0.2s ease-in-out;
+        user-select: none;
+    }
+</style>
+
+<div class="row">
+    <!-- Left Side: The Image -->
+    <div class="col-md-6 text-center border-right">
+        <h4 class="text-truncate" title="{{ unlinked.filename }}">Image: {{ unlinked.filename }}</h4>
+        <img src="{{ unlinked.image.url }}" class="img-fluid rounded shadow-sm mt-2" style="max-height: 500px; object-fit: contain;">
+    </div>
+
+    <!-- Right Side: Categories & Product Search -->
+    <div class="col-md-6">
+        <form hx-post="{% url 'link_image_to_product' %}" hx-target=".card-body">
+            {% csrf_token %}
+            <input type="hidden" name="unlinked_id" value="{{ unlinked.id }}">
+            
+            <!-- Step 1: Missing Categories -->
+            <div class="mb-4">
+                <h5 class="mb-1">1. Add Missing Categories (Optional)</h5>
+                <p class="text-muted small">Tap to select categories that should be added to this product.</p>
+                <div class="d-flex flex-wrap" style="gap: 8px;">
+                    {% for cat in categories %}
+                        <!-- Hidden Checkbox -->
+                        <input type="checkbox" name="categories" value="{{ cat.id }}" 
+                               id="cat_{{ cat.id }}" class="d-none category-pill-checkbox">
+                        <!-- Visible Pill Label -->
+                        <label for="cat_{{ cat.id }}" class="badge badge-light border category-pill-label m-0 text-dark">
+                            {{ cat.name }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Step 2: Search and Link -->
+            <div>
+                <h5 class="mb-1">2. Search & Link Product</h5>
+                <p class="text-muted small">Type the product name. Clicking a result will instantly link the image and selected categories.</p>
+                
+                <input class="form-control form-control-lg mb-3 border-primary" 
+                       type="text" 
+                       name="q" 
+                       placeholder="e.g., Blue Shirt..." 
+                       hx-get="{% url 'search_unlinked_products' %}" 
+                       hx-trigger="keyup changed delay:300ms, search" 
+                       hx-target="#search-results"
+                       autofocus>
+
+                <div id="search-results" class="list-group">
+                    <!-- HTMX Search Results inject here -->
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

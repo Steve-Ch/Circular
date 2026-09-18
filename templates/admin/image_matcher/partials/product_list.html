@@ -1,0 +1,16 @@
+<input class="form-control mb-3" type="text" placeholder="Search missing products..." 
+       hx-get="{% url 'match_by_product_list' %}" hx-trigger="keyup changed delay:400ms" hx-target="#workspace" name="q" value="{{ search_query }}">
+
+<div class="table-responsive">
+    <table class="table table-hover table-striped border">
+        <thead class="thead-light">
+            <tr>
+                <th width="40%">Product Name</th>
+                <th width="60%">Upload Image & Category</th>
+            </tr>
+        </thead>
+        <tbody id="product-rows">
+            {% include "admin/image_matcher/partials/product_rows.html" %}
+        </tbody>
+    </table>
+</div>

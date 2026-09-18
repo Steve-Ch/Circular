@@ -37,6 +37,11 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = "Categories"
 
+    def save(self, *xargs, **kwargs):
+                if self.name:
+                    self.name = self.name.title()
+                super().save(*xargs, **kwargs)
+
 
 
 
@@ -50,6 +55,7 @@ class Product(TimeStamps, models.Model):
     price = models.DecimalField(decimal_places=2,max_digits=10)
     package = models.BooleanField(default=False)
     display = models.BooleanField(default=True,)
+    barcode = models.CharField(max_length=100, null=True, blank=True, unique=True)
     # Track which merchant created the product globally
     created_by_merchant = models.ForeignKey("merchant.Merchant", on_delete=models.SET_NULL, null=True, blank=True)
 

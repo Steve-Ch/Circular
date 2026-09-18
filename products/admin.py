@@ -48,9 +48,9 @@ class ProductImageInline(admin.StackedInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
-    list_display = ('name', 'categories_display', 'display', 'price','created_at', 'created_by_merchant' )
-    list_filter = ('categories',)
-    search_fields = ('name',)
+    list_display = ('name', 'image_preview', 'categories_display', 'display', 'price','created_at', 'created_by_merchant', 'barcode' )
+    list_filter = ('categories','display')
+    search_fields = ('name','created_by_merchant__store_name',)
     # readonly_fields = ('created_at', 'updated_at', 'created_by_merchant')
 
 

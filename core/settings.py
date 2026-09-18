@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'imagekit',
     'solo',
+    'import_export',
 ]
 
 MIDDLEWARE = [
@@ -284,6 +285,22 @@ JAZZMIN_SETTINGS = {
         # App with dropdown menu to all its models pages (Permissions checked against models)
         {"app": "products"},
     ],
+    
+
+"custom_links": {
+        "website": [
+            {
+                "name": "Bulk Upload (Files/ZIP)", 
+                "url": "/admin/bulk-upload/", 
+                # "icon": "fas fa-upload",
+            },
+            {
+                "name": "Visual Image Matcher", 
+                "url": "/admin/image-matcher/", 
+                # "icon": "fas fa-bolt",
+            }
+        ]
+    },
 
 }
 

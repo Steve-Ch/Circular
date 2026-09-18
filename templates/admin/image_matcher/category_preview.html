@@ -1,0 +1,119 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="m-0"><i class="fas fa-tags"></i> New Categories Detected</h4>
+        </div>
+        
+        <div class="card-body">
+            <p class="text-muted mb-4">
+                We found categories in your file that do not exist in the database. 
+                Selected categories will be created. Deselected categories will be ignored, 
+                and their products will be imported without a category.
+            </p>
+
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="toggle-all-btn">
+                    <i class="fas fa-times-circle"></i> Deselect All
+                </button>
+            </div>
+
+            <form action="{% url 'process_excel_upload' %}" method="post">
+                {% csrf_token %}
+                
+                <div class="d-flex flex-wrap mb-4" style="gap: 10px;">
+                    {% for cat in new_cats %}
+                        <div class="pill-checkbox">
+                            <input type="checkbox" name="categories_to_create" value="{{ cat }}" 
+                                   id="new_cat_{{ forloop.counter }}" class="d-none cat-checkbox" checked>
+                            <label for="new_cat_{{ forloop.counter }}" class="badge badge-primary border cat-label p-2 m-0 shadow-sm" style="font-size: 1rem;">
+                                {{ cat }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <a href="/admin/image-matcher/" class="btn btn-secondary">Cancel Upload</a>
+                    <button type="submit" class="btn btn-success px-5">Continue Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styling for the pill UI */
+    .cat-checkbox:checked + .cat-label {
+        background-color: #007bff !important;
+        color: white !important;
+        border-color: #007bff !important;
+    }
+    .cat-checkbox:not(:checked) + .cat-label {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+        border-color: #ced4da !important;
+        text-decoration: line-through;
+    }
+    .cat-label {
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease-in-out;
+    }
+</style>
+
+<script>
+    document.getElementById('toggle-all-btn').addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('.cat-checkbox');
+        const isDeselecting = this.innerText.includes('Deselect All');
+        
+        checkboxes.forEach(cb => cb.checked = !isDeselecting);
+        
+        if (isDeselecting) {
+            this.innerHTML = '<i class="fas fa-check-square"></i> Select All';
+            this.classList.replace('btn-outline-secondary', 'btn-outline-primary');
+        } else {
+            this.innerHTML = '<i class="fas fa-times-circle"></i> Deselect All';
+            this.classList.replace('btn-outline-primary', 'btn-outline-secondary');
+        }
+    });
+</script>
+
+<!-- Full Screen Loading Overlay -->
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 9999; flex-direction: column; justify-content: center; align-items: center;">
+    <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem; border-width: 0.35em;">
+        <span class="sr-only">Loading...</span>
+    </div>
+    <h3 class="mt-4 text-primary font-weight-bold">Processing Data...</h3>
+    <p class="text-muted">This may take a few moments for large files. Please do not close this window.</p>
+</div>
+
+<script>
+    // Automatically trigger the loading overlay when any form on the page is submitted
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            // Optional: Check if file inputs are empty before showing spinner
+            const fileInputs = this.querySelectorAll('input[type="file"]');
+            let hasFile = fileInputs.length === 0; // If no file inputs exist, assume it's the Step 2 form
+            
+            fileInputs.forEach(input => {
+                if (input.files.length > 0) hasFile = true;
+            });
+
+            if (hasFile) {
+                document.getElementById('loading-overlay').style.display = 'flex';
+                // Disable submit buttons to prevent double-clicking
+                const btns = this.querySelectorAll('button[type="submit"]');
+                btns.forEach(btn => btn.classList.add('disabled'));
+            }
+        });
+    });
+</script>
+
+{% endblock %}
+
+
+
+
